@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import StoryCard from "./StoryCard";
+import BookShelf from "./BookShelf";
 
 type Story = {
   id: string;
@@ -21,11 +21,5 @@ export default function StoryList({ stories }: { stories: Story[] }) {
     if (res.ok) router.refresh();
   }
 
-  return (
-    <div className="space-y-4">
-      {stories.map((s) => (
-        <StoryCard key={s.id} story={s} onDelete={handleDelete} />
-      ))}
-    </div>
-  );
+  return <BookShelf stories={stories} onDelete={handleDelete} />;
 }

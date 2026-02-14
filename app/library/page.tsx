@@ -24,7 +24,7 @@ export default async function LibraryPage() {
     .limit(50);
 
   return (
-    <main className="min-h-screen p-6 md:p-8 max-w-2xl mx-auto">
+    <main className="min-h-screen p-6 md:p-8 max-w-3xl mx-auto">
       <nav className="flex items-center justify-between mb-8">
         <h1 className="text-2xl font-bold">Library</h1>
         <div className="flex items-center gap-4">
@@ -41,15 +41,6 @@ export default async function LibraryPage() {
       </nav>
 
       <StoryList stories={stories ?? []} />
-
-      {(!stories || stories.length === 0) && (
-        <p className="text-muted-foreground mt-8">
-          No stories yet.{" "}
-          <Link href="/create" className="text-foreground hover:underline font-medium">
-            Create your first story
-          </Link>
-        </p>
-      )}
     </main>
   );
 }

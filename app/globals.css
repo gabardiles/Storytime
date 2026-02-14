@@ -128,3 +128,16 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+/* ── Book cover responsive sizing ── */
+.book-cover {
+  width: var(--book-w-mobile);
+  height: var(--book-h-mobile);
+}
+
+@media (min-width: 640px) {
+  .book-cover {
+    width: var(--book-w);
+    height: var(--book-h);
+  }
+}

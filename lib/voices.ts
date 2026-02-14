@@ -21,6 +21,12 @@ export const VOICE_OPTIONS = [
     voiceId: "pNInz6obpgDQGcFmaJgB",
     description: "Clear male voice",
   },
+  {
+    id: "old-slow-man",
+    name: "Old slow man",
+    voiceId: "WL407qSICo0Q6gjDHRJq",
+    description: "Slow, soothing old man",
+  },
 ] as const;
 
 export type VoiceOptionId = (typeof VOICE_OPTIONS)[number]["id"];

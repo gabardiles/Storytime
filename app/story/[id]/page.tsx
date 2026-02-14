@@ -77,6 +77,15 @@ export default function StoryPage({
     }
   }
 
+  /** Get the next paragraph with audio, or null if none */
+  function getNextParagraph(currentId: string): Paragraph | null {
+    const list = (story?.chapters ?? []).flatMap((ch) => ch.paragraphs ?? []);
+    const idx = list.findIndex((p) => p.id === currentId);
+    if (idx === -1 || idx === list.length - 1) return null;
+    const next = list[idx + 1];
+    return next.audio_url ?? next.audioUrl ? next : null;
+  }
+
   function handlePlay(paragraph: Paragraph) {
     const url = paragraph.audio_url ?? paragraph.audioUrl;
     if (!url) return;
@@ -104,6 +113,15 @@ export default function StoryPage({
         setPlayingId(null);
       });
       setPlayingId(paragraph.id);
+    }
+  }
+
+  function handleAudioEnded(paragraph: Paragraph) {
+    const next = getNextParagraph(paragraph.id);
+    if (next) {
+      handlePlay(next);
+    } else {
+      setPlayingId(null);
     }
   }
 
@@ -172,7 +190,7 @@ export default function StoryPage({
                         data-id={p.id}
                         src={audioUrl}
                         preload="metadata"
-                        onEnded={() => setPlayingId(null)}
+                        onEnded={() => handleAudioEnded(p)}
                         onPlay={() => setPlayingId(p.id)}
                         onError={(e) => {
                           console.error("Audio load failed:", e);
