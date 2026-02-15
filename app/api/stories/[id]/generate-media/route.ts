@@ -138,6 +138,7 @@ export async function POST(
                   userId: user.id,
                   visualConsistencyRef,
                   imageIndexInStory: i,
+                  isCover: i === 0,
                   tags,
                   factsMode: factsOnly,
                 });

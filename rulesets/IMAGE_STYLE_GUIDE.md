@@ -222,6 +222,22 @@ Each image request must follow this structure, in order:
 
 ---
 
+## 10b. Cover Design (First Image Only)
+
+The first generated image is used as the **book cover** in the library. It must be designed as a front cover, not just a scene.
+
+**Cover-specific prompt additions:**
+- BOOK COVER illustration for a children's picture book
+- Design as a front cover: iconic scene that captures the story
+- Welcoming composition
+- Leave visual space at top or bottom for a title overlay
+- Centered, balanced, inviting
+- This image will appear on the book spine in a library
+
+**Same style rules apply** (Section 1–9). The cover uses the same visual consistency reference as in-story images.
+
+---
+
 ## 11. Quality Checklist Before Accepting Image
 
 - [ ] Does it look hand-painted?

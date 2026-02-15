@@ -26,14 +26,16 @@ export type ImagePromptContext = {
   tags?: string[];
   /** Visual consistency reference: character and setting descriptions to reuse across all images */
   visualConsistencyRef?: string;
-  /** Scene role: first image = opening, later images = story progression */
-  sceneRole?: "opening" | "later";
+  /** Scene role: cover = book front, opening = first in-story, later = story progression */
+  sceneRole?: "cover" | "opening" | "later";
   /** Facts mode: educational illustration of the topic */
   factsMode?: boolean;
 };
 
 /** Instructions that vary by scene position to create strong visual variety across the story */
 const SCENE_ROLE_PROMPTS = {
+  cover:
+    "BOOK COVER illustration for a children's picture book. Design as a front cover: iconic scene that captures the story, welcoming composition. Leave visual space at top or bottom for a title overlay. Centered, balanced, inviting. This image will appear on the book spine in a library.",
   opening:
     "OPENING SCENE - First illustration only. Wide establishing shot. Introduce characters and the story world. Set the mood and place. Welcoming, curious. This is how the story begins.",
   later:
@@ -53,7 +55,9 @@ export function buildImagePrompt(
   const sceneLine =
     context?.sceneRole === "later"
       ? `Scene to illustrate (a NEW moment, different from the opening): ${sceneDescription}`
-      : `Scene to illustrate: ${sceneDescription}`;
+      : context?.sceneRole === "cover"
+        ? `Cover scene to illustrate: ${sceneDescription}`
+        : `Scene to illustrate: ${sceneDescription}`;
   const factsHint = context?.factsMode
     ? "Educational, factual illustration of the topic. Kid-friendly."
     : null;

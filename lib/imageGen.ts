@@ -39,6 +39,8 @@ export type GenerateImageOptions = {
   visualConsistencyRef?: string;
   /** 0 = opening scene, 1+ = later scene */
   imageIndexInStory?: number;
+  /** When true, use cover-specific prompt (first image becomes book cover) */
+  isCover?: boolean;
   /** Story tags for theme/setting alignment in illustrations */
   tags?: string[];
   /** Facts mode: educational illustration of the topic */
@@ -49,8 +51,11 @@ export async function generateImageForParagraph(
   paragraphText: string,
   options: GenerateImageOptions
 ): Promise<{ imageUrl: string; imagePrompt: string }> {
-  const sceneRole =
-    options.imageIndexInStory === 0 ? "opening" : "later";
+  const sceneRole = options.isCover
+    ? "cover"
+    : options.imageIndexInStory === 0
+      ? "opening"
+      : "later";
   const prompt = buildImagePrompt(paragraphText, {
     visualConsistencyRef: options.visualConsistencyRef,
     sceneRole,
