@@ -28,6 +28,8 @@ export type ImagePromptContext = {
   visualConsistencyRef?: string;
   /** Scene role: first image = opening, later images = story progression */
   sceneRole?: "opening" | "later";
+  /** Facts mode: educational illustration of the topic */
+  factsMode?: boolean;
 };
 
 /** Instructions that vary by scene position to create strong visual variety across the story */
@@ -52,7 +54,11 @@ export function buildImagePrompt(
     context?.sceneRole === "later"
       ? `Scene to illustrate (a NEW moment, different from the opening): ${sceneDescription}`
       : `Scene to illustrate: ${sceneDescription}`;
+  const factsHint = context?.factsMode
+    ? "Educational, factual illustration of the topic. Kid-friendly."
+    : null;
   const parts = [
+    ...(factsHint ? [factsHint] : []),
     ...(context?.tags?.length
       ? [
           `Story themes/setting: ${context.tags.join(", ")}. Ensure illustrations match these themes.`,

@@ -137,6 +137,19 @@ body {
   body {
     @apply bg-background text-foreground;
   }
+  /* Pointer cursor for links and clickable elements */
+  a,
+  button,
+  [role="button"],
+  [type="button"],
+  [type="submit"],
+  select,
+  label[for],
+  input[type="checkbox"],
+  input[type="radio"],
+  .cursor-pointer {
+    cursor: pointer;
+  }
 }
 
 /* ── Generate button hover animations ── */

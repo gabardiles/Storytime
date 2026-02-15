@@ -46,6 +46,7 @@ export async function POST(req: Request) {
     const language = body.language ?? "en";
     const includeImages = body.includeImages !== false;
     const includeVoice = body.includeVoice !== false;
+    const factsOnly = body.factsOnly === true;
     const langOption = getLanguageOption(language);
 
     const spec = buildStorySpec({
@@ -56,6 +57,7 @@ export async function POST(req: Request) {
       tags,
       storyRules,
       language,
+      factsOnly,
       instructionsFromFile: loadInstructions(),
     });
 
@@ -74,6 +76,7 @@ export async function POST(req: Request) {
         language,
         includeImages,
         includeVoice,
+        factsOnly,
         globalStyleHint: spec.globalStyleHint,
         rulesVersion: spec.rules?.version ?? 1,
         initialPrompt,
@@ -99,6 +102,7 @@ export async function POST(req: Request) {
       storyRules: spec.storyRules,
       instructionsFromFile: spec.instructionsFromFile,
       language: spec.language,
+      factsOnly: spec.factsOnly,
     });
 
     const paragraphInserts = [];
@@ -144,6 +148,7 @@ export async function POST(req: Request) {
             visualConsistencyRef,
             imageIndexInStory: i,
             tags,
+            factsMode: spec.factsOnly,
           });
           if (!coverImageUrl) coverImageUrl = imageUrl;
           await updateParagraph(chapterId, idx + 1, { imageUrl, imagePrompt });
@@ -170,6 +175,7 @@ export async function POST(req: Request) {
         language,
         includeImages,
         includeVoice,
+        factsOnly,
         visualConsistencyRef,
         coverImageUrl,
         globalStyleHint: spec.globalStyleHint,

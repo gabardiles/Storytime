@@ -20,7 +20,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Plus, Minus, Hourglass, Volume2, ImageIcon, WandSparkles, Play, Loader2 } from "lucide-react";
+import { Plus, Minus, Hourglass, Volume2, ImageIcon, WandSparkles, Play, Loader2, FlaskConical, Check } from "lucide-react";
 import {
   getVoicesForTier,
   type VoiceTier,
@@ -58,6 +58,7 @@ export default function CreatePage() {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewPlaying, setPreviewPlaying] = useState(false);
   const [previewError, setPreviewError] = useState("");
+  const [factsOnly, setFactsOnly] = useState(false);
 
   function toggleTag(t: string) {
     setTags((prev) =>
@@ -97,11 +98,18 @@ export default function CreatePage() {
   }
 
   function toggleTone(id: string) {
+    if (factsOnly && id !== "informatical") {
+      setFactsOnly(false);
+    }
     setTones((prev) => {
       const next = prev.includes(id)
         ? prev.filter((x) => x !== id)
         : [...prev, id];
-      return next.length > 0 ? next : ["cozy"];
+      const result = next.length > 0 ? next : ["cozy"];
+      if (!result.includes("informatical")) {
+        setFactsOnly(false);
+      }
+      return result;
     });
   }
 
@@ -113,17 +121,18 @@ export default function CreatePage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          tone: serializeTones(tones),
+          tone: factsOnly ? "informatical" : serializeTones(tones),
           lengthKey,
           rulesetId: "default",
           userInput,
           storyRules,
-          tags,
+          tags: factsOnly ? [] : tags,
           voiceTier,
           voiceId,
           language,
           includeImages,
           includeVoice,
+          factsOnly,
         }),
       });
       const json = await res.json();
@@ -200,7 +209,21 @@ export default function CreatePage() {
                 </h3>
                 <pre className="text-xs bg-muted p-3 rounded-lg overflow-x-auto">
                   {JSON.stringify(
-                    { tones, lengthKey, language, voiceTier, voiceId, includeImages, includeVoice, userInput, storyRules, tags },
+                    {
+                      tones,
+                      effectiveTone: factsOnly ? "informatical" : serializeTones(tones),
+                      effectiveTags: factsOnly ? [] : tags,
+                      lengthKey,
+                      language,
+                      voiceTier,
+                      voiceId,
+                      includeImages,
+                      includeVoice,
+                      factsOnly,
+                      userInput,
+                      storyRules,
+                      tags,
+                    },
                     null,
                     2
                   )}
@@ -213,13 +236,14 @@ export default function CreatePage() {
                 <pre className="text-xs bg-muted p-3 rounded-lg overflow-x-auto">
                   {JSON.stringify(
                     buildStorySpec({
-                      tone: serializeTones(tones),
+                      tone: factsOnly ? "informatical" : serializeTones(tones),
                       lengthKey,
                       rulesetId: "default",
                       userInput,
                       storyRules,
-                      tags,
+                      tags: factsOnly ? [] : tags,
                       language,
+                      factsOnly,
                     }),
                     null,
                     2
@@ -233,13 +257,14 @@ export default function CreatePage() {
                 <pre className="text-xs bg-muted p-3 rounded-lg overflow-x-auto whitespace-pre-wrap">
                   {buildOpenAIPrompt(
                     buildStorySpec({
-                      tone: serializeTones(tones),
+                      tone: factsOnly ? "informatical" : serializeTones(tones),
                       lengthKey,
                       rulesetId: "default",
                       userInput,
                       storyRules,
-                      tags,
+                      tags: factsOnly ? [] : tags,
                       language,
+                      factsOnly,
                     }),
                     1
                   )}
@@ -281,6 +306,43 @@ export default function CreatePage() {
           </div>
         </div>
 
+        {tones.includes("informatical") && (
+          <div className="flex flex-col items-center justify-center py-4">
+            <button
+              type="button"
+              onClick={() => {
+                setFactsOnly((prev) => {
+                  if (!prev) setTones(["informatical"]);
+                  return !prev;
+                });
+              }}
+              className={`flex flex-col items-center justify-center gap-3 rounded-xl border-2 min-w-[160px] min-h-[120px] px-6 py-4 transition-colors ${
+                factsOnly
+                  ? "border-primary bg-primary text-primary-foreground shadow-md"
+                  : "border-border bg-background hover:bg-accent/50"
+              }`}
+              aria-pressed={factsOnly}
+              aria-label="Facts only: collect facts about the topics instead of a story"
+            >
+              <div className="relative">
+                <FlaskConical
+                  className={`size-10 sm:size-12 ${factsOnly ? "opacity-90" : ""}`}
+                  strokeWidth={1.5}
+                />
+                {factsOnly && (
+                  <span className="absolute -bottom-1 -right-1 flex size-5 items-center justify-center rounded-full bg-primary-foreground text-primary">
+                    <Check className="size-3" strokeWidth={3} />
+                  </span>
+                )}
+              </div>
+              <span className="font-medium text-base">Facts only?</span>
+              <span className="text-xs opacity-90 text-center">
+                Collect facts instead of a story
+              </span>
+            </button>
+          </div>
+        )}
+
         <div className="space-y-2">
           <Label htmlFor="userInput">Words or ideas for your story</Label>
           <div className="rounded-lg border-2 border-primary-muted bg-transparent">
@@ -295,28 +357,30 @@ export default function CreatePage() {
           </div>
         </div>
 
-        <div className="space-y-2">
-          <Label>Tags</Label>
-          <div className="flex flex-wrap gap-2">
-            {TAGS.map((t) => {
-              const selected = tags.includes(t);
-              return (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => toggleTag(t)}
-                  className={`rounded-full border-2 px-3 py-1.5 text-sm font-medium transition-colors ${
-                    selected
-                      ? "border-primary bg-primary text-primary-foreground hover:bg-primary/90"
-                      : "border-border bg-background hover:bg-accent/50"
-                  }`}
-                >
-                  {t}
-                </button>
-              );
-            })}
+        {!factsOnly && (
+          <div className="space-y-2">
+            <Label>Tags</Label>
+            <div className="flex flex-wrap gap-2">
+              {TAGS.map((t) => {
+                const selected = tags.includes(t);
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => toggleTag(t)}
+                    className={`rounded-full border-2 px-3 py-1.5 text-sm font-medium transition-colors ${
+                      selected
+                        ? "border-primary bg-primary text-primary-foreground hover:bg-primary/90"
+                        : "border-border bg-background hover:bg-accent/50"
+                    }`}
+                  >
+                    {t}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Extra options – accordion (adult settings, extra space to avoid accidental clicks) */}
         <div className="mt-10">

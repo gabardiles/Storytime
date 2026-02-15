@@ -60,6 +60,7 @@ export async function POST(
     const language = (ctx.language as string) ?? "en";
     const includeImages = (ctx.includeImages as boolean) !== false;
     const includeVoice = (ctx.includeVoice as boolean) !== false;
+    const factsOnly = (ctx.factsOnly as boolean) === true;
     const visualConsistencyRef = ctx.visualConsistencyRef as string | undefined;
     const langOption = getLanguageOption(language);
     const globalStyleHint =
@@ -88,6 +89,7 @@ export async function POST(
       storyRules,
       instructionsFromFile: loadInstructions(),
       language: langOption.promptName,
+      factsOnly,
     });
 
     const paragraphInserts = [];
@@ -129,6 +131,7 @@ export async function POST(
             visualConsistencyRef,
             imageIndexInStory: i + 1,
             tags,
+            factsMode: factsOnly,
           });
           await updateParagraph(chapterId, idx + 1, { imageUrl, imagePrompt });
         } catch (err) {

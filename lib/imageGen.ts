@@ -41,6 +41,8 @@ export type GenerateImageOptions = {
   imageIndexInStory?: number;
   /** Story tags for theme/setting alignment in illustrations */
   tags?: string[];
+  /** Facts mode: educational illustration of the topic */
+  factsMode?: boolean;
 };
 
 export async function generateImageForParagraph(
@@ -53,6 +55,7 @@ export async function generateImageForParagraph(
     visualConsistencyRef: options.visualConsistencyRef,
     sceneRole,
     tags: options.tags,
+    factsMode: options.factsMode,
   });
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 

@@ -11,11 +11,21 @@ export async function generateParagraphs(spec: {
   storyRules?: string;
   instructionsFromFile?: string;
   language?: string;
+  factsOnly?: boolean;
 }): Promise<string[]> {
   const language = spec.language ?? "English";
+  const opening = spec.factsOnly
+    ? `Write a collection of facts about the topics. Do NOT write a story. Extract topics from the user input and provide accurate, kid-friendly facts.`
+    : `Write a bedtime story chapter.`;
+  const langLine = spec.factsOnly
+    ? `Write the facts entirely in ${language}.`
+    : `Write the story entirely in ${language}.`;
+  const closing = spec.factsOnly
+    ? `Keep it kid-safe.`
+    : `Keep it kid-safe. End the final paragraph calm and sleepy.`;
   const prompt = [
-    `Write a bedtime story chapter.`,
-    `Write the story entirely in ${language}.`,
+    opening,
+    langLine,
     `Chapter index: ${spec.chapterIndex}`,
     spec.recap ? `Recap so far: ${spec.recap}` : "",
     `User input: ${spec.userInput}`,
@@ -29,7 +39,7 @@ export async function generateParagraphs(spec: {
     spec.storyRules ? `Story rules (user):\n${spec.storyRules}` : "",
     `Output exactly ${spec.paragraphCount} paragraphs.`,
     `Each paragraph should be 2-5 sentences.`,
-    `Keep it kid-safe. End the final paragraph calm and sleepy.`,
+    closing,
     `Return JSON array of strings. No extra text.`,
   ]
     .filter(Boolean)
