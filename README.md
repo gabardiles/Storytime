@@ -43,6 +43,10 @@ Add redirect URL in Authentication > URL Configuration:
 - Site URL: `http://localhost:3000` (or your production URL)
 - Redirect URLs: `http://localhost:3000/auth/callback`
 
+### Production (Vercel, etc.)
+
+Set `NEXT_PUBLIC_SITE_URL` to your production URL (e.g. `https://your-app.vercel.app`) so sign-out redirects work correctly.
+
 ## Run
 
 ```bash

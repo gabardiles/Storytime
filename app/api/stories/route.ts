@@ -129,20 +129,20 @@ export async function POST(req: Request) {
       const imageCount = getImageCountForChapter(lengthKey as "micro" | "short" | "medium" | "long");
       const imageIndices = getParagraphIndicesForImages(paragraphs.length, imageCount);
       for (const idx of imageIndices) {
-      try {
-        const { imageUrl, imagePrompt } = await generateImageForParagraph(paragraphs[idx], {
-          storyId,
-          chapterId,
-          paragraphIndex: idx + 1,
-          userId: user.id,
-          visualConsistencyRef,
-        });
-        if (!coverImageUrl) coverImageUrl = imageUrl;
-        await updateParagraph(chapterId, idx + 1, { imageUrl, imagePrompt });
-      } catch (err) {
-        console.error(`Image generation failed for paragraph ${idx + 1}:`, err);
+        try {
+          const { imageUrl, imagePrompt } = await generateImageForParagraph(paragraphs[idx], {
+            storyId,
+            chapterId,
+            paragraphIndex: idx + 1,
+            userId: user.id,
+            visualConsistencyRef,
+          });
+          if (!coverImageUrl) coverImageUrl = imageUrl;
+          await updateParagraph(chapterId, idx + 1, { imageUrl, imagePrompt });
+        } catch (err) {
+          console.error(`Image generation failed for paragraph ${idx + 1}:`, err);
+        }
       }
-    }
     }
 
     await markChapterDone(chapterId);
