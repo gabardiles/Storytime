@@ -1,43 +1,96 @@
 /**
  * Google Cloud TTS voice options for story narration.
- * Voice names from Cloud Text-to-Speech (Neural2, Chirp HD, Wavenet).
+ * Standard: Neural2/WaveNet. Premium: Gemini TTS.
  */
-export const VOICE_OPTIONS = [
+
+/** Standard tier: Neural2 and WaveNet voices (free / low cost) */
+export const STANDARD_VOICES = [
   {
-    id: "default",
-    name: "Default",
-    voiceName: "en-US-Neural2-F", // Warm female narrator
-    description: "Warm, friendly narrator",
+    id: "lily",
+    name: "Lily",
+    voiceName: "en-US-Neural2-F",
+    description: "Clear, friendly female narrator",
   },
   {
-    id: "old-man",
-    name: "Grandpa (old man)",
-    voiceName: "en-US-Neural2-D", // Mature male
+    id: "grandpa",
+    name: "Grandpa",
+    voiceName: "en-US-Neural2-D",
     description: "Wise, gentle storyteller",
   },
   {
-    id: "adam",
-    name: "Adam",
+    id: "emma",
+    name: "Emma",
     voiceName: "en-US-Neural2-C",
-    description: "Clear male voice",
+    description: "Articulate female narrator",
   },
   {
-    id: "old-slow-man",
-    name: "Old slow man",
+    id: "walter",
+    name: "Walter",
     voiceName: "en-US-Wavenet-D",
-    description: "Slow, soothing old man",
+    description: "Slow, soothing male",
   },
 ] as const;
 
-export type VoiceOptionId = (typeof VOICE_OPTIONS)[number]["id"];
+/** Premium tier: Gemini TTS voices (Flash or Pro) */
+export const PREMIUM_VOICES = [
+  { id: "zephyr", name: "Zephyr", voiceName: "Zephyr", description: "Bright, clear female" },
+  { id: "achernar", name: "Achernar", voiceName: "Achernar", description: "Soft, warm female" },
+  { id: "kore", name: "Kore", voiceName: "Kore", description: "Strong, firm female" },
+  { id: "charon", name: "Charon", voiceName: "Charon", description: "Deep male" },
+  { id: "puck", name: "Puck", voiceName: "Puck", description: "Friendly male" },
+  { id: "leda", name: "Leda", voiceName: "Leda", description: "Warm female narrator" },
+] as const;
 
-export function getVoiceName(voiceOptionId: string): string {
-  const option = VOICE_OPTIONS.find((v) => v.id === voiceOptionId);
-  const voiceName = option?.voiceName ?? VOICE_OPTIONS[0].voiceName;
+/** @deprecated Use STANDARD_VOICES. Kept for backward compatibility. */
+export const VOICE_OPTIONS = STANDARD_VOICES;
 
-  if (voiceOptionId === "default" && process.env.GOOGLE_TTS_VOICE_NAME) {
-    return process.env.GOOGLE_TTS_VOICE_NAME;
+export type VoiceTier = "standard" | "premium" | "premium-plus";
+export type VoiceOptionId =
+  | (typeof STANDARD_VOICES)[number]["id"]
+  | (typeof PREMIUM_VOICES)[number]["id"];
+
+/** Legacy ID mapping for backward compatibility */
+const LEGACY_ID_MAP: Record<string, string> = {
+  default: "lily",
+  "old-man": "grandpa",
+  adam: "emma",
+  "old-slow-man": "walter",
+};
+
+export function getVoicesForTier(tier: VoiceTier) {
+  if (tier === "standard") return STANDARD_VOICES;
+  return PREMIUM_VOICES;
+}
+
+export type VoiceConfig = {
+  engine: "standard" | "gemini";
+  voiceName: string;
+  model?: "gemini-2.5-flash-tts" | "gemini-2.5-pro-tts";
+};
+
+export function getVoiceConfig(
+  tier: VoiceTier,
+  voiceOptionId: string
+): VoiceConfig {
+  const resolvedId = LEGACY_ID_MAP[voiceOptionId] ?? voiceOptionId;
+
+  if (tier === "standard") {
+    const option = STANDARD_VOICES.find((v) => v.id === resolvedId);
+    const envOverride =
+      resolvedId === "lily" ? process.env.GOOGLE_TTS_VOICE_NAME : undefined;
+    const voiceName =
+      envOverride ?? option?.voiceName ?? STANDARD_VOICES[0].voiceName;
+    return { engine: "standard", voiceName };
   }
 
-  return voiceName;
+  const option = PREMIUM_VOICES.find((v) => v.id === resolvedId);
+  const voiceName = option?.voiceName ?? PREMIUM_VOICES[0].voiceName;
+  const model =
+    tier === "premium-plus" ? "gemini-2.5-pro-tts" : "gemini-2.5-flash-tts";
+  return { engine: "gemini", voiceName, model };
+}
+
+export function getVoiceName(voiceOptionId: string): string {
+  const config = getVoiceConfig("standard", voiceOptionId);
+  return config.voiceName;
 }

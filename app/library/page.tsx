@@ -6,10 +6,14 @@ import StoryList from "./StoryList";
 import { Button } from "@/components/ui/button";
 
 export default async function LibraryPage() {
-  const supabase = await createRouteHandlerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  let user: { id: string } | null = null;
+  try {
+    const supabase = await createRouteHandlerClient();
+    const { data } = await supabase.auth.getUser();
+    user = data.user;
+  } catch {
+    redirect("/login");
+  }
 
   if (!user) {
     redirect("/login");

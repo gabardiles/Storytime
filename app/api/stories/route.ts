@@ -40,7 +40,8 @@ export async function POST(req: Request) {
     const userInput = body.userInput ?? "";
     const tags = Array.isArray(body.tags) ? body.tags : [];
     const storyRules = body.storyRules ?? "";
-    const voiceId = body.voiceId ?? "default";
+    const voiceId = body.voiceId ?? "lily";
+    const voiceTier = body.voiceTier ?? "standard";
     const language = body.language ?? "en";
     const includeImages = body.includeImages !== false;
     const includeVoice = body.includeVoice !== false;
@@ -68,6 +69,7 @@ export async function POST(req: Request) {
         tags,
         storyRules,
         voiceId,
+        voiceTier,
         language,
         includeImages,
         includeVoice,
@@ -107,6 +109,7 @@ export async function POST(req: Request) {
             chapterId,
             paragraphIndex: idx + 1,
             voiceOptionId: voiceId,
+            voiceTier,
             languageCode: langOption.languageCode,
           })
         : null;
@@ -158,6 +161,7 @@ export async function POST(req: Request) {
         tags,
         storyRules,
         voiceId,
+        voiceTier,
         language,
         includeImages,
         includeVoice,

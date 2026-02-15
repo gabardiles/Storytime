@@ -22,7 +22,10 @@ import {
 } from "@/components/ui/collapsible";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { ChevronDownIcon, ChevronRightIcon } from "lucide-react";
-import { VOICE_OPTIONS } from "@/lib/voices";
+import {
+  getVoicesForTier,
+  type VoiceTier,
+} from "@/lib/voices";
 import { LANGUAGE_OPTIONS } from "@/lib/languages";
 import { TONE_OPTIONS, serializeTones } from "@/lib/tones";
 
@@ -44,7 +47,8 @@ export default function CreatePage() {
   const [lengthKey, setLengthKey] = useState<"micro" | "short" | "medium" | "long">(
     "short"
   );
-  const [voiceId, setVoiceId] = useState<string>("default");
+  const [voiceTier, setVoiceTier] = useState<VoiceTier>("standard");
+  const [voiceId, setVoiceId] = useState<string>("lily");
   const [language, setLanguage] = useState<string>("en");
   const [userInput, setUserInput] = useState("");
   const [storyRules, setStoryRules] = useState("");
@@ -85,6 +89,7 @@ export default function CreatePage() {
           userInput,
           storyRules,
           tags,
+          voiceTier,
           voiceId,
           language,
           includeImages,
@@ -153,7 +158,7 @@ export default function CreatePage() {
                 </h3>
                 <pre className="text-xs bg-muted p-3 rounded-lg overflow-x-auto">
                   {JSON.stringify(
-                    { tones, lengthKey, language, voiceId, includeImages, includeVoice, userInput, storyRules, tags },
+                    { tones, lengthKey, language, voiceTier, voiceId, includeImages, includeVoice, userInput, storyRules, tags },
                     null,
                     2
                   )}
@@ -253,19 +258,55 @@ export default function CreatePage() {
         </div>
 
         <div className="space-y-2">
+          <Label htmlFor="voiceTier">Voice quality</Label>
+          <Select
+            value={voiceTier}
+            onValueChange={(v) => {
+              const tier = v as VoiceTier;
+              setVoiceTier(tier);
+              const voices = getVoicesForTier(tier);
+              setVoiceId(voices[0].id);
+            }}
+          >
+            <SelectTrigger id="voiceTier" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="standard">
+                Standard — Free, Neural2/WaveNet
+              </SelectItem>
+              <SelectItem value="premium">
+                Premium — Gemini Flash (~$0.025/story)
+              </SelectItem>
+              <SelectItem value="premium-plus">
+                Premium+ — Gemini Pro (~$0.05/story)
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
           <Label htmlFor="voice">Narrator voice</Label>
-          <Select value={voiceId} onValueChange={setVoiceId}>
+          <Select
+            value={voiceId}
+            onValueChange={setVoiceId}
+          >
             <SelectTrigger id="voice" className="w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {VOICE_OPTIONS.map((v) => (
+              {getVoicesForTier(voiceTier).map((v) => (
                 <SelectItem key={v.id} value={v.id}>
                   {v.name} — {v.description}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
+          <p className="text-xs text-muted-foreground">
+            {voiceTier === "standard"
+              ? "Powered by Google Cloud Text-to-Speech"
+              : "Powered by Google Gemini TTS"}
+          </p>
         </div>
 
         <div className="space-y-2">

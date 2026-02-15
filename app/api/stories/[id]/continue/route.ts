@@ -17,6 +17,7 @@ import { generateParagraphs } from "@/lib/textGen";
 import { generateAudioForParagraph } from "@/lib/tts";
 import { createRouteHandlerClient } from "@/lib/supabase-route-handler";
 import { getLanguageOption } from "@/lib/languages";
+import type { VoiceTier } from "@/lib/voices";
 
 export async function POST(
   _: Request,
@@ -51,7 +52,10 @@ export async function POST(
     const userInput = (ctx.userInput as string) ?? "";
     const tags = (ctx.tags as string[]) ?? [];
     const storyRules = (ctx.storyRules as string) ?? "";
-    const voiceId = (ctx.voiceId as string) ?? "default";
+    const voiceId = (ctx.voiceId as string) ?? "lily";
+    const rawTier = (ctx.voiceTier as string) ?? "standard";
+    const voiceTier: VoiceTier =
+      rawTier === "premium" || rawTier === "premium-plus" ? rawTier : "standard";
     const language = (ctx.language as string) ?? "en";
     const includeImages = (ctx.includeImages as boolean) !== false;
     const includeVoice = (ctx.includeVoice as boolean) !== false;
@@ -94,6 +98,7 @@ export async function POST(
             chapterId,
             paragraphIndex: idx + 1,
             voiceOptionId: voiceId,
+            voiceTier,
             languageCode: langOption.languageCode,
           })
         : null;
