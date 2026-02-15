@@ -13,13 +13,6 @@ export const STANDARD_VOICES = [
     previewText: "My name is Lily.",
   },
   {
-    id: "grandpa",
-    name: "Grandpa",
-    voiceName: "en-US-Neural2-D",
-    description: "Wise, gentle storyteller",
-    previewText: "My name is Grandpa.",
-  },
-  {
     id: "emma",
     name: "Emma",
     voiceName: "en-US-Neural2-C",
@@ -55,8 +48,9 @@ export type VoiceOptionId =
 
 /** Legacy ID mapping for backward compatibility */
 const LEGACY_ID_MAP: Record<string, string> = {
-  default: "lily",
-  "old-man": "grandpa",
+  default: "walter",
+  "old-man": "walter",
+  grandpa: "walter",
   adam: "emma",
   "old-slow-man": "walter",
 };

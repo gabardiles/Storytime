@@ -1,4 +1,7 @@
 import { NextResponse } from "next/server";
+
+/** Vercel: extend timeout for paragraphs + TTS + images (~60–120s) */
+export const maxDuration = 300;
 import { loadRuleset } from "@/lib/rulesets";
 import { loadInstructions } from "@/lib/instructions";
 import {
@@ -95,8 +98,10 @@ export async function POST(
     const paragraphInserts = [];
     for (let idx = 0; idx < paragraphs.length; idx++) {
       const text = paragraphs[idx];
-      const audioUrl = includeVoice
-        ? await generateAudioForParagraph(text, {
+      let audioUrl: string | null = null;
+      if (includeVoice) {
+        try {
+          audioUrl = await generateAudioForParagraph(text, {
             userId: user.id,
             storyId,
             chapterId,
@@ -104,8 +109,11 @@ export async function POST(
             voiceOptionId: voiceId,
             voiceTier,
             languageCode: langOption.languageCode,
-          })
-        : null;
+          });
+        } catch (err) {
+          console.error(`TTS failed for paragraph ${idx + 1}:`, err);
+        }
+      }
       paragraphInserts.push({
         chapterId,
         paragraphIndex: idx + 1,

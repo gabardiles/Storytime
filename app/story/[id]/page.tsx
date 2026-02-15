@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatTonesForDisplay } from "@/lib/tones";
 import { ImageLightbox } from "@/components/ImageLightbox";
-import { ImageIcon, Play, Pause } from "lucide-react";
+import { ImageIcon, Play, Pause, Loader2 } from "lucide-react";
 
 function getImageCountForChapter(_lengthKey: string): number {
   return 2;
@@ -41,6 +41,7 @@ type Chapter = {
 
 type Story = {
   id: string;
+  title?: string | null;
   tone: string;
   length_key: string;
   status: string;
@@ -60,6 +61,8 @@ export default function StoryPage({
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [storyId, setStoryId] = useState<string>("");
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+  const generateMediaTriggered = useRef(false);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     params.then((p) => setStoryId(p.id));
@@ -80,6 +83,26 @@ export default function StoryPage({
       setLoading(false);
     })();
   }, [storyId]);
+
+  useEffect(() => {
+    if (!storyId || !story) return;
+    if (story.status === "generating" && !generateMediaTriggered.current) {
+      generateMediaTriggered.current = true;
+      fetch(`/api/stories/${storyId}/generate-media`, { method: "POST" }).catch(
+        (err) => console.error("Generate media failed:", err)
+      );
+    }
+    if (story.status === "generating") {
+      pollIntervalRef.current = setInterval(fetchStory, 2500);
+    }
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
+    };
+  }, [storyId, story?.status]);
+
 
   async function onContinue() {
     setContinuing(true);
@@ -166,6 +189,10 @@ export default function StoryPage({
     );
   }
 
+  const firstPara = story.chapters?.[0]?.paragraphs?.[0]?.text;
+  const displayTitle =
+    story.title || (firstPara ? (firstPara.length > 50 ? `${firstPara.slice(0, 50)}…` : firstPara) : "Story");
+
   return (
     <main className="min-h-screen p-6 md:p-8 max-w-2xl mx-auto">
       <nav className="flex items-center gap-4 mb-8">
@@ -177,9 +204,15 @@ export default function StoryPage({
         </Link>
       </nav>
 
-      <h1 className="text-2xl font-bold mb-2">Story</h1>
+      <h1 className="text-2xl font-bold mb-2">{displayTitle}</h1>
       <p className="text-muted-foreground text-sm mb-8">
         Tone: {formatTonesForDisplay(story.tone)} · Length: {story.length_key}
+        {story.status === "generating" && (
+          <span className="ml-2 inline-flex items-center gap-1">
+            <Loader2 className="size-3.5 animate-spin" />
+            Adding voice and images…
+          </span>
+        )}
       </p>
 
       <div className="space-y-8">
@@ -219,10 +252,14 @@ export default function StoryPage({
                       </button>
                     ) : (
                       <div
-                        className="flex items-center justify-center w-full max-w-md mx-auto aspect-square rounded-lg border-2 border-dashed border-muted-foreground/30 bg-muted/30"
+                        className="flex flex-col items-center justify-center gap-2 w-full max-w-md mx-auto aspect-square rounded-lg border-2 border-dashed border-muted-foreground/30 bg-muted/30"
                         aria-hidden
                       >
-                        <ImageIcon className="size-12 text-muted-foreground/40" />
+                        {story.status === "generating" ? (
+                          <Loader2 className="size-10 text-muted-foreground/40 animate-spin" />
+                        ) : (
+                          <ImageIcon className="size-12 text-muted-foreground/40" />
+                        )}
                       </div>
                     )
                   )}

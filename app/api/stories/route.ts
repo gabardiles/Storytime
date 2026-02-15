@@ -1,23 +1,15 @@
 import { NextResponse } from "next/server";
+
+/** Vercel: extend timeout for LLM paragraph generation (~15–30s) */
+export const maxDuration = 60;
 import { loadInstructions } from "@/lib/instructions";
 import { buildStorySpec, buildOpenAIPrompt } from "@/lib/storySpec";
-import { generateParagraphs, generateStoryTitleAndSummary } from "@/lib/textGen";
-import { generateAudioForParagraph } from "@/lib/tts";
+import { generateParagraphs } from "@/lib/textGen";
 import {
   insertStory,
   insertChapter,
   insertParagraphs,
-  markChapterDone,
-  markStoryDone,
-  updateStory,
-  updateParagraph,
 } from "@/lib/db";
-import {
-  getImageCountForChapter,
-  getParagraphIndicesForImages,
-  generateImageForParagraph,
-} from "@/lib/imageGen";
-import { generateVisualConsistencyRef } from "@/lib/imageConsistency";
 import { createRouteHandlerClient } from "@/lib/supabase-route-handler";
 import { getLanguageOption } from "@/lib/languages";
 import { buildTagDirectivesBlock } from "@/lib/tags";
@@ -105,94 +97,13 @@ export async function POST(req: Request) {
       factsOnly: spec.factsOnly,
     });
 
-    const paragraphInserts = [];
-    for (let idx = 0; idx < paragraphs.length; idx++) {
-      const text = paragraphs[idx];
-      const audioUrl = includeVoice
-        ? await generateAudioForParagraph(text, {
-            userId: user.id,
-            storyId,
-            chapterId,
-            paragraphIndex: idx + 1,
-            voiceOptionId: voiceId,
-            voiceTier,
-            languageCode: langOption.languageCode,
-          })
-        : null;
-      paragraphInserts.push({
-        chapterId,
-        paragraphIndex: idx + 1,
-        text,
-        audioUrl,
-      });
-    }
-
+    const paragraphInserts = paragraphs.map((text, idx) => ({
+      chapterId,
+      paragraphIndex: idx + 1,
+      text,
+      audioUrl: null as string | null,
+    }));
     await insertParagraphs(paragraphInserts);
-
-    let visualConsistencyRef: string | undefined;
-    let coverImageUrl: string | undefined;
-    if (includeImages) {
-      visualConsistencyRef = await generateVisualConsistencyRef(paragraphs, {
-        language: langOption.promptName,
-      });
-      const imageCount = getImageCountForChapter(lengthKey as "micro" | "short" | "medium" | "long");
-      const imageIndices = getParagraphIndicesForImages(paragraphs.length, imageCount);
-      for (let i = 0; i < imageIndices.length; i++) {
-        const idx = imageIndices[i];
-        try {
-          const { imageUrl, imagePrompt } = await generateImageForParagraph(paragraphs[idx], {
-            storyId,
-            chapterId,
-            paragraphIndex: idx + 1,
-            userId: user.id,
-            visualConsistencyRef,
-            imageIndexInStory: i,
-            tags,
-            factsMode: spec.factsOnly,
-          });
-          if (!coverImageUrl) coverImageUrl = imageUrl;
-          await updateParagraph(chapterId, idx + 1, { imageUrl, imagePrompt });
-        } catch (err) {
-          console.error(`Image generation failed for paragraph ${idx + 1}:`, err);
-        }
-      }
-    }
-
-    await markChapterDone(chapterId);
-
-    const firstParagraph = paragraphs[0] ?? "";
-    const { title, summary } = await generateStoryTitleAndSummary(firstParagraph, {
-      language: spec.language,
-    });
-    await updateStory(storyId, {
-      title,
-      context_json: {
-        userInput,
-        tags,
-        storyRules,
-        voiceId,
-        voiceTier,
-        language,
-        includeImages,
-        includeVoice,
-        factsOnly,
-        visualConsistencyRef,
-        coverImageUrl,
-        globalStyleHint: spec.globalStyleHint,
-        rulesVersion: spec.rules?.version ?? 1,
-        initialPrompt,
-        storySpec: {
-          tone: spec.tone,
-          lengthKey: spec.lengthKey,
-          paragraphCount: spec.paragraphCount,
-          globalStyleHint: spec.globalStyleHint,
-          context: spec.context,
-        },
-        summary,
-        openaiResponse: paragraphs,
-      },
-    });
-    await markStoryDone(storyId);
 
     return NextResponse.json({ storyId, chapterId });
   } catch (e: unknown) {

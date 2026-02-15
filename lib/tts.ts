@@ -16,17 +16,19 @@ const LANGUAGE_FALLBACK_VOICES: Record<string, string> = {
 
 function getGoogleClient(): TextToSpeechClient {
   const credentialsJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
-  if (credentialsJson) {
-    try {
-      const credentials = JSON.parse(credentialsJson);
-      return new TextToSpeechClient({ credentials });
-    } catch {
-      throw new Error(
-        "GOOGLE_APPLICATION_CREDENTIALS_JSON is invalid JSON"
-      );
-    }
+  if (!credentialsJson?.trim()) {
+    throw new Error(
+      "GOOGLE_APPLICATION_CREDENTIALS_JSON is not set. Add it in Vercel env vars (minified JSON, single line). Or set SKIP_TTS=true to disable voice."
+    );
   }
-  return new TextToSpeechClient();
+  try {
+    const credentials = JSON.parse(credentialsJson);
+    return new TextToSpeechClient({ credentials });
+  } catch {
+    throw new Error(
+      "GOOGLE_APPLICATION_CREDENTIALS_JSON is invalid JSON. Paste the full service account JSON as a single line (no newlines)."
+    );
+  }
 }
 
 const BEDTIME_PROMPT =

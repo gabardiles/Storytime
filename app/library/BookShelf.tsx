@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { PlusIcon } from "lucide-react";
 import BookCover from "./BookCover";
@@ -132,7 +132,7 @@ function buildShelves(stories: Story[], perShelf: number): ShelfItem[][] {
  */
 function getBookTransform(index: number, id: string): React.CSSProperties {
   const h = hashStr(id);
-  const nudge = h % 5 === 0 ? -8 : h % 4 === 0 ? -5 : 0; // slight overlap
+  const nudge = h % 5 === 0 ? -6 : h % 4 === 0 ? -4 : 0; // slight overlap (smaller on mobile)
   const tilt = h % 7 === 0 ? -1.5 : h % 6 === 0 ? 1 : h % 9 === 0 ? -0.8 : 0;
 
   return {
@@ -153,7 +153,7 @@ function ShelfRow({
   return (
     <div className="relative pb-3 sm:pb-4">
       {/* Books area */}
-      <div className="flex items-end justify-center px-2 pb-0 pt-3 sm:px-5 sm:pt-4">
+      <div className="flex items-end justify-center px-1 pb-0 pt-2 sm:px-5 sm:pt-4">
         {items.map((item, i) => {
           if (item.kind === "book") {
             return (
@@ -189,7 +189,7 @@ function ShelfRow({
             <Link
               key="new-story"
               href="/create"
-              className="group relative flex-shrink-0 cursor-pointer transition-transform duration-200 hover:-translate-y-1 hover:scale-[1.03] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background ml-2 mr-3 sm:ml-3 sm:mr-4 w-[105px] h-[145px] sm:w-[118px] sm:h-[165px]"
+              className="group relative flex-shrink-0 cursor-pointer transition-transform duration-200 hover:-translate-y-1 hover:scale-[1.03] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background ml-1 mr-2 sm:ml-3 sm:mr-4 w-[78px] h-[108px] sm:w-[118px] sm:h-[165px]"
               aria-label="Create new story"
             >
               {/* Spine – left binding edge, always visible */}
@@ -274,8 +274,18 @@ export default function BookShelf({
 }) {
   const [selectedStory, setSelectedStory] = useState<Story | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(true);
 
-  const shelves = useMemo(() => buildShelves(stories, 3), [stories]);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 640px)");
+    const fn = () => setIsMobile(!mq.matches);
+    fn();
+    mq.addEventListener("change", fn);
+    return () => mq.removeEventListener("change", fn);
+  }, []);
+
+  const perShelf = isMobile ? 2 : 3;
+  const shelves = useMemo(() => buildShelves(stories, perShelf), [stories, perShelf]);
 
   function handleBookClick(story: Story) {
     setSelectedStory(story);

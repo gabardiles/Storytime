@@ -55,9 +55,9 @@ type SizeDef = {
 };
 
 const SIZES: Record<SizeVariant, SizeDef> = {
-  small:  { w: 105, h: 140, mobileW: 92,  mobileH: 128, titleSize: "sm:text-xs",   mobileTitleSize: "text-[11px]", subtitleSize: "text-[9px]" },
-  medium: { w: 130, h: 175, mobileW: 110, mobileH: 155, titleSize: "sm:text-sm",   mobileTitleSize: "text-xs",     subtitleSize: "text-[10px]" },
-  large:  { w: 148, h: 200, mobileW: 120, mobileH: 172, titleSize: "sm:text-base", mobileTitleSize: "text-sm",     subtitleSize: "text-[10px]" },
+  small:  { w: 105, h: 140, mobileW: 70,  mobileH: 98,  titleSize: "sm:text-xs",   mobileTitleSize: "text-[10px]", subtitleSize: "text-[8px]" },
+  medium: { w: 130, h: 175, mobileW: 80,  mobileH: 112, titleSize: "sm:text-sm",   mobileTitleSize: "text-[11px]", subtitleSize: "text-[9px]" },
+  large:  { w: 148, h: 200, mobileW: 88,  mobileH: 125, titleSize: "sm:text-base", mobileTitleSize: "text-xs",     subtitleSize: "text-[9px]" },
 };
 
 /* ── Cover style: image with overlay, or solid color ── */

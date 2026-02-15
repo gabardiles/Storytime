@@ -62,18 +62,27 @@ export async function insertParagraphs(paragraphs: ParagraphInsert[]) {
   if (error) throw error;
 }
 
+export type ParagraphUpdate =
+  | { imageUrl: string; imagePrompt: string }
+  | { audioUrl: string }
+  | { imageUrl: string; imagePrompt: string; audioUrl: string };
+
 export async function updateParagraph(
   chapterId: string,
   paragraphIndex: number,
-  updates: { imageUrl: string; imagePrompt: string }
+  updates: ParagraphUpdate
 ) {
   const sb = supabaseServer();
+  const payload: Record<string, unknown> = {};
+  if ("imageUrl" in updates) payload.image_url = updates.imageUrl;
+  if ("imagePrompt" in updates) payload.image_prompt = updates.imagePrompt;
+  if ("audioUrl" in updates) {
+    payload.audio_url = updates.audioUrl;
+    payload.status = "audio_ready";
+  }
   const { error } = await sb
     .from("paragraphs")
-    .update({
-      image_url: updates.imageUrl,
-      image_prompt: updates.imagePrompt,
-    })
+    .update(payload)
     .eq("chapter_id", chapterId)
     .eq("paragraph_index", paragraphIndex);
   if (error) throw error;

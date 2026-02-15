@@ -42,10 +42,10 @@ export default function CreatePage() {
   const router = useRouter();
   const [tones, setTones] = useState<string[]>(["cozy"]);
   const [lengthKey, setLengthKey] = useState<"micro" | "short" | "medium" | "long">(
-    "short"
+    "medium"
   );
   const [voiceTier, setVoiceTier] = useState<VoiceTier>("standard");
-  const [voiceId, setVoiceId] = useState<string>("lily");
+  const [voiceId, setVoiceId] = useState<string>("walter");
   const [language, setLanguage] = useState<string>("en");
   const [userInput, setUserInput] = useState("");
   const [storyRules, setStoryRules] = useState("");
