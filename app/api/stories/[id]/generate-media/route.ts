@@ -102,19 +102,22 @@ export async function POST(
                 voiceTier,
                 languageCode: langOption.languageCode,
               }).catch((err) => {
-                console.error(`TTS failed for paragraph ${idx + 1}:`, err);
+                const msg = err instanceof Error ? err.message : String(err);
+                console.error(`TTS failed for paragraph ${idx + 1}:`, msg);
                 return null;
               })
             )
           );
+          const successCount = results.filter(Boolean).length;
           for (let idx = 0; idx < results.length; idx++) {
             const audioUrl = results[idx];
             if (audioUrl) {
               await updateParagraph(chapterId, idx + 1, { audioUrl });
             }
           }
+          return { voiceSuccessCount: successCount, voiceTotal: results.length };
         })()
-      : Promise.resolve();
+      : Promise.resolve({ voiceSuccessCount: 0, voiceTotal: 0 });
 
     const imageTask =
       includeImages && imageIndices.length > 0
@@ -148,8 +151,10 @@ export async function POST(
           })()
         : Promise.resolve({ visualConsistencyRef: undefined as string | undefined, coverImageUrl: undefined as string | undefined });
 
-    const [, imageResult] = await Promise.all([voiceTask, imageTask]);
+    const [voiceResult, imageResult] = await Promise.all([voiceTask, imageTask]);
     const { visualConsistencyRef, coverImageUrl } = imageResult ?? {};
+    const voiceSuccessCount = voiceResult?.voiceSuccessCount ?? 0;
+    const voiceTotal = voiceResult?.voiceTotal ?? 0;
 
     await markChapterDone(chapterId);
 
@@ -164,6 +169,9 @@ export async function POST(
       coverImageUrl,
       summary,
       openaiResponse: paragraphs,
+      ...(includeVoice && voiceTotal > 0 && voiceSuccessCount === 0
+        ? { voiceError: "Voice generation failed. Check GOOGLE_APPLICATION_CREDENTIALS_JSON and Vercel logs." }
+        : {}),
     };
     await updateStory(storyId, {
       title,
@@ -171,7 +179,12 @@ export async function POST(
     });
     await markStoryDone(storyId);
 
-    return NextResponse.json({ ok: true, status: "done" });
+    return NextResponse.json({
+      ok: true,
+      status: "done",
+      voiceGenerated: voiceSuccessCount,
+      voiceTotal,
+    });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });

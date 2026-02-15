@@ -77,7 +77,8 @@ export default function CreatePage() {
         if (res.status === 503) {
           setPreviewError("Voice preview is not available.");
         } else {
-          setPreviewError("Preview failed.");
+          const json = await res.json().catch(() => ({}));
+          setPreviewError((json?.error as string) || `Preview failed (${res.status}).`);
         }
         return;
       }
@@ -90,8 +91,8 @@ export default function CreatePage() {
       };
       setPreviewPlaying(true);
       await audio.play();
-    } catch {
-      setPreviewError("Preview failed.");
+    } catch (e) {
+      setPreviewError(e instanceof Error ? e.message : "Preview failed.");
     } finally {
       setPreviewLoading(false);
     }

@@ -207,6 +207,11 @@ export default function StoryPage({
       <h1 className="text-2xl font-bold mb-2">{displayTitle}</h1>
       <p className="text-muted-foreground text-sm mb-8">
         Tone: {formatTonesForDisplay(story.tone)} · Length: {story.length_key}
+        {(story.context_json as { voiceError?: string })?.voiceError && (
+          <span className="ml-2 inline-block text-amber-600 dark:text-amber-400">
+            (Voice failed—check /api/debug/tts-config)
+          </span>
+        )}
         {story.status === "generating" && (
           <span className="ml-2 inline-flex items-center gap-1">
             <Loader2 className="size-3.5 animate-spin" />
