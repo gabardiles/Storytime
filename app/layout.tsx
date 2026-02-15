@@ -23,7 +23,7 @@ const geistMono = Geist_Mono({
 const playfairDisplay = Playfair_Display({
   variable: "--font-book-1",
   subsets: ["latin"],
-  weight: ["400", "700"],
+  weight: ["400", "700", "800"],
 });
 
 const bebasNeue = Bebas_Neue({
@@ -61,7 +61,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${playfairDisplay.variable} ${bebasNeue.variable} ${cormorantGaramond.variable} ${oswald.variable} ${libreBaskerville.variable} antialiased`}
       >

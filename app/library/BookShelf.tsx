@@ -19,7 +19,7 @@ type Story = {
 
 type ShelfItem =
   | { kind: "book"; story: Story; index: number }
-  | { kind: "deco"; seed: string; index: number }
+  | { kind: "deco"; seed: string; index: number; imageUrl?: string }
   | { kind: "new" };
 
 /* ── Deterministic hash ── */
@@ -32,60 +32,95 @@ function hashStr(str: string): number {
   return Math.abs(h);
 }
 
+/** Seeded random for deterministic but varied placement (LCG for even distribution) */
+function seededRandom(seed: number): number {
+  const a = 1664525;
+  const c = 1013904223;
+  const m = 2 ** 32;
+  const next = ((a * (seed >>> 0) + c) >>> 0) % m;
+  return next / m;
+}
+
 /**
  * Build items for one shelf row.
- * Inserts a decorative object every ~2-3 books for more frequent decoration.
+ * Randomly places 1–3 decorative objects among books (position varies per row).
  */
-function buildShelfItems(stories: Story[], startIdx: number): ShelfItem[] {
-  const items: ShelfItem[] = [];
-  stories.forEach((story, i) => {
-    // Insert deco after every 3rd book
-    if (i > 0 && i % 3 === 0) {
-      items.push({ kind: "deco", seed: story.id, index: startIdx + i });
+function buildShelfItems(
+  stories: Story[],
+  startIdx: number,
+  shelfSeed: number
+): ShelfItem[] {
+  const bookItems: ShelfItem[] = stories.map((story, i) => ({
+    kind: "book" as const,
+    story,
+    index: startIdx + i,
+  }));
+
+  const bookCount = bookItems.length;
+  if (bookCount === 0) return [];
+
+  const decoCount = 1;
+  const decoPositions: number[] = [];
+  const used = new Set<number>();
+  for (let i = 0; i < decoCount; i++) {
+    let pos = Math.floor(seededRandom(shelfSeed + i * 7 + 1) * (bookCount + 1));
+    let attempts = 0;
+    while (used.has(pos) && attempts < 20) {
+      pos = Math.floor(seededRandom(shelfSeed + i * 7 + attempts) * (bookCount + 1));
+      attempts++;
     }
-    items.push({ kind: "book", story, index: startIdx + i });
-  });
-  return items;
+    used.add(pos);
+    decoPositions.push(pos);
+  }
+  decoPositions.sort((a, b) => a - b);
+
+  const result: ShelfItem[] = [];
+  let bookIdx = 0;
+  let decoIdx = 0;
+  for (let slot = 0; slot < bookCount + decoCount; slot++) {
+    if (decoIdx < decoPositions.length && result.length === decoPositions[decoIdx]) {
+      const seedStory = stories[Math.min(bookIdx, bookCount - 1)];
+      const seed = seedStory?.id ?? String(shelfSeed);
+      const imageUrl = stories.find((s) => s.context_json?.coverImageUrl)?.context_json
+        ?.coverImageUrl as string | undefined;
+      result.push({ kind: "deco", seed, index: startIdx + decoIdx, imageUrl });
+      decoIdx++;
+    } else if (bookIdx < bookCount) {
+      result.push(bookItems[bookIdx]);
+      bookIdx++;
+    }
+  }
+  return result;
 }
 
 /**
  * Split stories into shelf rows.
- * Mobile: 3 books/shelf, Desktop: 4 books/shelf.
+ * 3 books per row. "New story" is the first item on the first row.
  */
 function buildShelves(stories: Story[], perShelf: number): ShelfItem[][] {
   const shelves: ShelfItem[][] = [];
   let offset = 0;
 
-  // Reserve 1 slot on the last row for the "new book"
-  // so total book slots = perShelf - 1 on the final row
-  const total = stories.length;
+  // First row: "new" takes first slot, then perShelf - 1 books
+  const firstRowTake = Math.min(stories.length, perShelf - 1);
+  const firstSlice = stories.slice(0, firstRowTake);
+  const firstSeed = hashStr(firstSlice[0]?.id ?? "0") + 0;
+  const firstRowItems = buildShelfItems(firstSlice, 0, firstSeed);
+  firstRowItems.unshift({ kind: "new" });
+  shelves.push(firstRowItems);
+  offset += firstSlice.length;
 
-  for (let i = 0; i < total; i += perShelf) {
-    const remaining = total - i;
-    // If this is the last batch and it would fill the row exactly,
-    // leave room for the "new" slot by taking one fewer
-    const isFinalBatch = i + perShelf >= total;
-    const take = isFinalBatch ? Math.min(remaining, perShelf - 1) : perShelf;
-
-    const slice = stories.slice(i, i + take);
-    shelves.push(buildShelfItems(slice, offset));
+  // Remaining rows: perShelf books each
+  for (let i = firstRowTake; i < stories.length; i += perShelf) {
+    const slice = stories.slice(i, i + perShelf);
+    const shelfSeed = hashStr(slice[0]?.id ?? String(i)) + i * 1000;
+    shelves.push(buildShelfItems(slice, offset, shelfSeed));
     offset += slice.length;
-
-    // If we took fewer to leave room, but there are leftovers, continue
-    if (isFinalBatch && take < remaining) {
-      const leftover = stories.slice(i + take, i + take + (perShelf - 1));
-      const items = buildShelfItems(leftover, offset);
-      items.push({ kind: "new" });
-      shelves.push(items);
-      offset += leftover.length;
-      return shelves;
-    }
   }
 
   if (shelves.length === 0) {
-    shelves.push([]);
+    shelves.push([{ kind: "new" }]);
   }
-  shelves[shelves.length - 1].push({ kind: "new" });
 
   return shelves;
 }
@@ -141,26 +176,29 @@ function ShelfRow({
                 key={`deco-${item.seed}-${item.index}`}
                 className="flex-shrink-0 mx-0.5 sm:mx-2"
               >
-                <DecorativeObject seed={item.seed} index={item.index} />
+                <DecorativeObject
+                  seed={item.seed}
+                  index={item.index}
+                  imageUrl={item.kind === "deco" ? item.imageUrl : undefined}
+                />
               </div>
             );
           }
-          /* "+ new" slot – blank white book */
+          /* "+ new" slot – designed like other books, always has space on sides */
           return (
             <Link
               key="new-story"
               href="/create"
-              className="group relative ml-1 flex-shrink-0 cursor-pointer transition-transform duration-200 hover:-translate-y-1 hover:scale-[1.03] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background
-                w-[105px] h-[145px] sm:w-[118px] sm:h-[165px] sm:ml-2"
+              className="group relative flex-shrink-0 cursor-pointer transition-transform duration-200 hover:-translate-y-1 hover:scale-[1.03] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background ml-2 mr-3 sm:ml-3 sm:mr-4 w-[105px] h-[145px] sm:w-[118px] sm:h-[165px]"
               aria-label="Create new story"
             >
-              {/* Spine */}
+              {/* Spine – left binding edge, always visible */}
               <div
                 className="absolute left-0 top-0 bottom-0 rounded-l-[3px]"
                 style={{
                   width: 8,
-                  background: "linear-gradient(to right, #D8D8D8 0%, #D8D8D8 40%, rgba(0,0,0,0.08) 100%)",
-                  boxShadow: "inset -1px 0 2px rgba(0,0,0,0.1), inset 1px 0 1px rgba(255,255,255,0.3)",
+                  background: "linear-gradient(to right, #A8906C 0%, #C4A882 40%, rgba(0,0,0,0.08) 100%)",
+                  boxShadow: "inset -1px 0 2px rgba(0,0,0,0.15), inset 1px 0 1px rgba(255,255,255,0.2)",
                 }}
               />
               {/* Cover */}
@@ -173,7 +211,7 @@ function ShelfRow({
                   boxShadow: "4px 6px 12px rgba(0,0,0,0.12), 1px 2px 4px rgba(0,0,0,0.06)",
                 }}
               />
-              {/* Crease */}
+              {/* Crease – spine-to-cover edge */}
               <div
                 className="absolute top-0 bottom-0 pointer-events-none"
                 style={{
@@ -182,9 +220,24 @@ function ShelfRow({
                   background: "linear-gradient(to right, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.03) 50%, rgba(255,255,255,0.1) 100%)",
                 }}
               />
-              {/* Plus icon */}
-              <div className="relative flex h-full w-full items-center justify-center" style={{ paddingLeft: 8 }}>
-                <PlusIcon className="size-7 text-neutral-400 transition-colors group-hover:text-primary sm:size-8" />
+              {/* Title at top (Garamond), plus icon below – like other books */}
+              <div
+                className="relative flex h-full w-full flex-col items-center justify-start pt-5 pb-4 gap-3 text-center"
+                style={{
+                  paddingLeft: 16,
+                  paddingRight: 8,
+                  fontFamily: "var(--font-book-3)",
+                }}
+              >
+                <span
+                  className="font-extrabold text-base leading-tight text-neutral-600 group-hover:text-primary transition-colors"
+                  style={{ fontFamily: "var(--font-book-1)" }}
+                >
+                  New story
+                </span>
+                <div className="flex-1 flex items-center justify-center">
+                  <PlusIcon className="size-7 text-neutral-400 transition-colors group-hover:text-primary sm:size-8" />
+                </div>
               </div>
               {/* Page edge */}
               <div
@@ -222,8 +275,7 @@ export default function BookShelf({
   const [selectedStory, setSelectedStory] = useState<Story | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const mobileShelves = useMemo(() => buildShelves(stories, 3), [stories]);
-  const desktopShelves = useMemo(() => buildShelves(stories, 4), [stories]);
+  const shelves = useMemo(() => buildShelves(stories, 3), [stories]);
 
   function handleBookClick(story: Story) {
     setSelectedStory(story);
@@ -240,19 +292,9 @@ export default function BookShelf({
           boxShadow: "inset 0 1px 3px rgba(0,0,0,0.06), 0 2px 12px rgba(0,0,0,0.08)",
         }}
       >
-        {/* Mobile layout: 3 per shelf */}
-        <div className="block sm:hidden">
-          {mobileShelves.map((items, i) => (
-            <ShelfRow key={`m-${i}`} items={items} onBookClick={handleBookClick} />
-          ))}
-        </div>
-
-        {/* Desktop layout: 4 per shelf */}
-        <div className="hidden sm:block">
-          {desktopShelves.map((items, i) => (
-            <ShelfRow key={`d-${i}`} items={items} onBookClick={handleBookClick} />
-          ))}
-        </div>
+        {shelves.map((items, i) => (
+          <ShelfRow key={i} items={items} onBookClick={handleBookClick} />
+        ))}
       </div>
 
       <BookDetailsDialog

@@ -29,9 +29,11 @@ type DecoType = (typeof DECO_TYPES)[number];
 export default function DecorativeObject({
   seed,
   index,
+  imageUrl,
 }: {
   seed: string;
   index: number;
+  imageUrl?: string;
 }) {
   const h = hashStr(seed + index);
   const type: DecoType = DECO_TYPES[h % DECO_TYPES.length];
@@ -41,26 +43,26 @@ export default function DecorativeObject({
   /* Sculpture – abstract white/stone shapes like the reference */
   if (type === "sculpture") {
     return (
-      <div className={cn(base)} style={{ width: 30, height: 80 }}>
+      <div className={cn(base)} style={{ width: 46, height: 120 }}>
         <div className="flex flex-col items-center">
           {/* Head */}
           <div
             className="rounded-full"
             style={{
-              width: 14,
-              height: 16,
+              width: 22,
+              height: 24,
               background: "#E8E2DA",
               boxShadow: "1px 2px 4px rgba(0,0,0,0.1)",
             }}
           />
           {/* Neck */}
-          <div style={{ width: 6, height: 8, background: "#E0D9D0" }} />
+          <div style={{ width: 10, height: 12, background: "#E0D9D0" }} />
           {/* Body */}
           <div
             className="rounded-t-full"
             style={{
-              width: 16,
-              height: 28,
+              width: 24,
+              height: 42,
               background: "linear-gradient(to bottom, #E8E2DA, #D6CFC5)",
               boxShadow: "1px 3px 6px rgba(0,0,0,0.1)",
             }}
@@ -69,8 +71,8 @@ export default function DecorativeObject({
           <div
             className="rounded-sm"
             style={{
-              width: 20,
-              height: 6,
+              width: 30,
+              height: 10,
               background: "#CCC5BB",
             }}
           />
@@ -79,30 +81,32 @@ export default function DecorativeObject({
     );
   }
 
-  /* Vase – dark cylinder with subtle sheen */
+  /* Vase – green or purple cylinder with subtle sheen */
   if (type === "vase") {
-    const dark = h % 2 === 0;
+    const isPurple = h % 2 === 0;
+    const rim = isPurple ? "#7B68AE" : "#5B8C5A";
+    const body = isPurple
+      ? "linear-gradient(to right, #6B5899, #8B7AB8, #6B5899)"
+      : "linear-gradient(to right, #4A7A49, #6B9C6A, #4A7A49)";
     return (
-      <div className={cn(base)} style={{ width: 28, height: 65 }}>
+      <div className={cn(base)} style={{ width: 42, height: 98 }}>
         <div className="flex flex-col items-center">
           {/* Rim */}
           <div
             className="rounded-full"
             style={{
-              width: 16,
-              height: 4,
-              background: dark ? "#3A3A3A" : "#B8A898",
+              width: 24,
+              height: 6,
+              background: rim,
             }}
           />
           {/* Body */}
           <div
             style={{
-              width: 20,
-              height: 38,
-              borderRadius: "4px 4px 6px 6px",
-              background: dark
-                ? "linear-gradient(to right, #2C2C2C, #444, #2C2C2C)"
-                : "linear-gradient(to right, #C4B5A4, #D9CCBC, #C4B5A4)",
+              width: 30,
+              height: 58,
+              borderRadius: "6px 6px 8px 8px",
+              background: body,
               boxShadow: "2px 4px 8px rgba(0,0,0,0.15)",
             }}
           />
@@ -111,32 +115,54 @@ export default function DecorativeObject({
     );
   }
 
-  /* Frame – small dark or light picture frame leaning slightly */
+  /* Frame – wood frame with passe-partout (green/purple/yellow), shows generated story image */
   if (type === "frame") {
-    const isDark = h % 3 === 0;
+    const matColor = (["#5B8C5A", "#7B68AE", "#E8AA42"] as const)[h % 3];
     return (
-      <div className={cn(base)} style={{ width: 44, height: 60 }}>
+      <div className={cn(base)} style={{ width: 88, height: 118 }}>
         <div
-          className="rounded-sm"
+          className="rounded-sm overflow-hidden"
           style={{
-            width: 40,
-            height: 52,
-            border: `2px solid ${isDark ? "#333" : "#C4B5A4"}`,
-            background: isDark ? "#1A1A1A" : "#F5F0E8",
-            boxShadow: "2px 4px 10px rgba(0,0,0,0.12)",
+            width: 80,
+            height: 108,
+            background: "linear-gradient(135deg, #C4A882, #D4B896, #B89868)",
+            padding: 8,
+            boxShadow: "3px 5px 12px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.15)",
             transform: "rotate(-2deg)",
+            border: "1px solid rgba(0,0,0,0.2)",
           }}
         >
+          {/* Passe-partout (mat) – green, purple, or yellow */}
           <div
-            className="mx-auto mt-2 rounded-sm"
+            className="rounded-sm overflow-hidden"
             style={{
-              width: 28,
-              height: 34,
-              background: isDark
-                ? "linear-gradient(135deg, #333, #555)"
-                : "rgba(0,0,0,0.04)",
+              width: "100%",
+              height: "100%",
+              padding: 6,
+              background: matColor,
             }}
-          />
+          >
+            {/* Image area */}
+            <div
+              className="w-full h-full rounded-sm overflow-hidden bg-neutral-200"
+              style={{ minHeight: 56 }}
+            >
+              {imageUrl ? (
+                <img
+                  src={imageUrl}
+                  alt=""
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div
+                  className="w-full h-full"
+                  style={{
+                    background: `linear-gradient(135deg, ${matColor}88, ${matColor}CC)`,
+                  }}
+                />
+              )}
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -145,13 +171,13 @@ export default function DecorativeObject({
   /* Ring – wooden/ceramic ring standing up */
   if (type === "ring") {
     return (
-      <div className={cn(base)} style={{ width: 34, height: 40 }}>
+      <div className={cn(base)} style={{ width: 52, height: 60 }}>
         <div
           style={{
-            width: 30,
-            height: 30,
+            width: 46,
+            height: 46,
             borderRadius: "50%",
-            border: "5px solid #C4A882",
+            border: "7px solid #C4A882",
             background: "transparent",
             boxShadow: "2px 3px 6px rgba(0,0,0,0.12)",
           }}
@@ -162,12 +188,12 @@ export default function DecorativeObject({
 
   /* Postcard – tilted card */
   return (
-    <div className={cn(base)} style={{ width: 42, height: 60 }}>
+    <div className={cn(base)} style={{ width: 64, height: 90 }}>
       <div
         className="rounded-sm"
         style={{
-          width: 38,
-          height: 50,
+          width: 58,
+          height: 76,
           background: "linear-gradient(135deg, #F5F0E8 0%, #E8E0D4 100%)",
           transform: "rotate(-3deg)",
           boxShadow: "2px 3px 8px rgba(0,0,0,0.1)",
@@ -175,12 +201,12 @@ export default function DecorativeObject({
         }}
       >
         <div
-          className="mx-auto mt-2 rounded-sm"
-          style={{ width: 26, height: 18, background: "rgba(0,0,0,0.05)" }}
+          className="mx-auto mt-3 rounded-sm"
+          style={{ width: 40, height: 28, background: "rgba(0,0,0,0.05)" }}
         />
-        <div className="mx-auto mt-1.5 space-y-0.5 px-2">
-          <div className="h-[1.5px] rounded-full bg-black/8" />
-          <div className="h-[1.5px] w-3/4 rounded-full bg-black/8" />
+        <div className="mx-auto mt-2 space-y-1 px-3">
+          <div className="h-[2px] rounded-full bg-black/8" />
+          <div className="h-[2px] w-3/4 rounded-full bg-black/8" />
         </div>
       </div>
     </div>

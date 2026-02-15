@@ -30,26 +30,27 @@ function getGoogleClient(): TextToSpeechClient {
 }
 
 const BEDTIME_PROMPT =
-  "Read aloud in a warm, soothing bedtime story tone. Gentle, calm pacing.";
+  "Read aloud in a warm, soothing bedtime story tone.";
 
-export async function generateAudioForParagraph(
+export type SynthesizeOptions = {
+  voiceOptionId?: string;
+  voiceTier?: VoiceTier;
+  languageCode?: string;
+};
+
+/**
+ * Synthesize speech to MP3 bytes. Does not store to Supabase.
+ * Used for voice preview and by generateAudioForParagraph.
+ */
+export async function synthesizeToBuffer(
   text: string,
-  options: {
-    userId: string;
-    storyId: string;
-    chapterId: string;
-    paragraphIndex: number;
-    voiceId?: string;
-    voiceOptionId?: string;
-    voiceTier?: VoiceTier;
-    languageCode?: string;
-  }
-): Promise<string | null> {
+  options: SynthesizeOptions = {}
+): Promise<Uint8Array> {
   if (process.env.SKIP_TTS === "true" || process.env.SKIP_TTS === "1") {
-    return null;
+    throw new Error("TTS is disabled");
   }
 
-  const voiceOptionId = options.voiceId ?? options.voiceOptionId ?? "lily";
+  const voiceOptionId = options.voiceOptionId ?? "lily";
   const tier = options.voiceTier ?? "standard";
   const config = getVoiceConfig(tier, voiceOptionId);
 
@@ -85,7 +86,7 @@ export async function generateAudioForParagraph(
     voice: voiceParams,
     audioConfig: {
       audioEncoding: "MP3",
-      speakingRate: config.engine === "standard" ? 0.95 : undefined,
+      speakingRate: 1.1,
     },
   });
 
@@ -93,6 +94,32 @@ export async function generateAudioForParagraph(
   if (!audioContent || !(audioContent instanceof Uint8Array)) {
     throw new Error("Google TTS did not return audio");
   }
+
+  return audioContent;
+}
+
+export async function generateAudioForParagraph(
+  text: string,
+  options: {
+    userId: string;
+    storyId: string;
+    chapterId: string;
+    paragraphIndex: number;
+    voiceId?: string;
+    voiceOptionId?: string;
+    voiceTier?: VoiceTier;
+    languageCode?: string;
+  }
+): Promise<string | null> {
+  if (process.env.SKIP_TTS === "true" || process.env.SKIP_TTS === "1") {
+    return null;
+  }
+
+  const audioContent = await synthesizeToBuffer(text, {
+    voiceOptionId: options.voiceId ?? options.voiceOptionId,
+    voiceTier: options.voiceTier,
+    languageCode: options.languageCode,
+  });
 
   const supabase = supabaseServer();
   const storagePath = `${options.userId}/${options.storyId}/${options.chapterId}_${options.paragraphIndex}.mp3`;

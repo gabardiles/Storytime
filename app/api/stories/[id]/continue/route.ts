@@ -17,6 +17,7 @@ import { generateParagraphs } from "@/lib/textGen";
 import { generateAudioForParagraph } from "@/lib/tts";
 import { createRouteHandlerClient } from "@/lib/supabase-route-handler";
 import { getLanguageOption } from "@/lib/languages";
+import { buildTagDirectivesBlock } from "@/lib/tags";
 import type { VoiceTier } from "@/lib/voices";
 
 export async function POST(
@@ -81,6 +82,7 @@ export async function POST(
       globalStyleHint,
       userInput,
       tags,
+      tagDirectives: buildTagDirectivesBlock(tags),
       chapterIndex: nextIndex,
       recap,
       storyRules,
@@ -126,6 +128,7 @@ export async function POST(
             userId: user.id,
             visualConsistencyRef,
             imageIndexInStory: i + 1,
+            tags,
           });
           await updateParagraph(chapterId, idx + 1, { imageUrl, imagePrompt });
         } catch (err) {

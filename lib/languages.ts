@@ -7,12 +7,14 @@ export const LANGUAGE_OPTIONS = [
     name: "English",
     promptName: "English",
     languageCode: "en",
+    flag: "🇺🇸",
   },
   {
     id: "sv",
     name: "Swedish",
     promptName: "Swedish",
     languageCode: "sv",
+    flag: "🇸🇪",
   },
 ] as const;
 

@@ -39,6 +39,8 @@ export type GenerateImageOptions = {
   visualConsistencyRef?: string;
   /** 0 = opening scene, 1+ = later scene */
   imageIndexInStory?: number;
+  /** Story tags for theme/setting alignment in illustrations */
+  tags?: string[];
 };
 
 export async function generateImageForParagraph(
@@ -50,6 +52,7 @@ export async function generateImageForParagraph(
   const prompt = buildImagePrompt(paragraphText, {
     visualConsistencyRef: options.visualConsistencyRef,
     sceneRole,
+    tags: options.tags,
   });
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 

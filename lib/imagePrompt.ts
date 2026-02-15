@@ -53,6 +53,11 @@ export function buildImagePrompt(
       ? `Scene to illustrate (a NEW moment, different from the opening): ${sceneDescription}`
       : `Scene to illustrate: ${sceneDescription}`;
   const parts = [
+    ...(context?.tags?.length
+      ? [
+          `Story themes/setting: ${context.tags.join(", ")}. Ensure illustrations match these themes.`,
+        ]
+      : []),
     STYLE_ANCHOR,
     FORMAT_COMPOSITION,
     CHARACTER_RULES,

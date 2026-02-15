@@ -1,6 +1,7 @@
 import { loadRuleset, LengthKey, RulesetId } from "./rulesets";
 import { getLanguageOption } from "./languages";
 import { parseTones, hasInformatical } from "./tones";
+import { buildTagDirectivesBlock } from "./tags";
 
 export type StoryContextInput = {
   userInput: string;
@@ -22,6 +23,7 @@ export type StorySpec = {
     userInput: string;
     tags: string[];
   };
+  tagDirectives: string;
   globalStyleHint: string;
   storyRules: string;
   instructionsFromFile: string;
@@ -51,6 +53,7 @@ export function buildStorySpec(input: StoryContextInput): StorySpec {
     paragraphCount,
     rules,
     context: { userInput: input.userInput, tags: input.tags },
+    tagDirectives: buildTagDirectivesBlock(input.tags),
     globalStyleHint,
     storyRules: input.storyRules ?? "",
     instructionsFromFile,
@@ -69,7 +72,9 @@ export function buildOpenAIPrompt(
     `Chapter index: ${chapterIndex}`,
     recap ? `Recap so far: ${recap}` : "",
     `User input: ${spec.context.userInput}`,
-    `Tags: ${spec.context.tags.join(", ")}`,
+    spec.tagDirectives
+      ? `TAG DIRECTIVES (mandatory — follow these for selected tags):\n${spec.tagDirectives}`
+      : "",
     `Style: ${spec.globalStyleHint}`,
     spec.instructionsFromFile
       ? `Global rules (from instructions.md):\n${spec.instructionsFromFile}`

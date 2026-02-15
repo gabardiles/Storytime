@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { buildStorySpec, buildOpenAIPrompt } from "@/lib/storySpec";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -16,30 +15,28 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { ChevronDownIcon, ChevronRightIcon, Hourglass } from "lucide-react";
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { Plus, Minus, Hourglass, Volume2, ImageIcon, WandSparkles, Play, Loader2 } from "lucide-react";
 import {
   getVoicesForTier,
   type VoiceTier,
 } from "@/lib/voices";
 import { LANGUAGE_OPTIONS } from "@/lib/languages";
 import { TONE_OPTIONS, serializeTones } from "@/lib/tones";
+import { getAvailableTags } from "@/lib/tags";
 
-const TAGS = [
-  "Animals",
-  "Space",
-  "Forest",
-  "Ocean",
-  "Friendship",
-  "Bravery",
-  "Magic",
-  "Funny",
-  "Cozy",
+const LENGTH_OPTIONS: { key: "micro" | "short" | "medium" | "long"; label: string; minutes: number }[] = [
+  { key: "micro", label: "Quick", minutes: 1 },
+  { key: "short", label: "Short", minutes: 2 },
+  { key: "medium", label: "Medium", minutes: 4 },
+  { key: "long", label: "Long", minutes: 6 },
 ];
+
+const TAGS = getAvailableTags();
 
 export default function CreatePage() {
   const router = useRouter();
@@ -52,18 +49,51 @@ export default function CreatePage() {
   const [language, setLanguage] = useState<string>("en");
   const [userInput, setUserInput] = useState("");
   const [storyRules, setStoryRules] = useState("");
-  const [storyRulesOpen, setStoryRulesOpen] = useState(true);
   const [tags, setTags] = useState<string[]>([]);
   const [includeImages, setIncludeImages] = useState(true);
   const [includeVoice, setIncludeVoice] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [debugOpen, setDebugOpen] = useState(false);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewPlaying, setPreviewPlaying] = useState(false);
+  const [previewError, setPreviewError] = useState("");
 
   function toggleTag(t: string) {
     setTags((prev) =>
       prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]
     );
+  }
+
+  async function playPreview() {
+    setPreviewError("");
+    if (previewLoading || previewPlaying) return;
+    setPreviewLoading(true);
+    try {
+      const url = `/api/voice-preview?voiceId=${encodeURIComponent(voiceId)}&voiceTier=${encodeURIComponent(voiceTier)}&language=${encodeURIComponent(language)}`;
+      const res = await fetch(url);
+      if (!res.ok) {
+        if (res.status === 503) {
+          setPreviewError("Voice preview is not available.");
+        } else {
+          setPreviewError("Preview failed.");
+        }
+        return;
+      }
+      const blob = await res.blob();
+      const audioUrl = URL.createObjectURL(blob);
+      const audio = new Audio(audioUrl);
+      audio.onended = () => {
+        setPreviewPlaying(false);
+        URL.revokeObjectURL(audioUrl);
+      };
+      setPreviewPlaying(true);
+      await audio.play();
+    } catch {
+      setPreviewError("Preview failed.");
+    } finally {
+      setPreviewLoading(false);
+    }
   }
 
   function toggleTone(id: string) {
@@ -224,12 +254,10 @@ export default function CreatePage() {
       )}
 
       <div className="space-y-6">
+        {/* Tone – big, fills container */}
         <div className="space-y-2">
           <Label>Tone</Label>
-          <p className="text-sm text-muted-foreground">
-            Pick one or more. Combine e.g. Info + Adventure.
-          </p>
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {TONE_OPTIONS.map((t) => {
               const Icon = t.icon;
               const selected = tones.includes(t.id);
@@ -238,15 +266,15 @@ export default function CreatePage() {
                   key={t.id}
                   type="button"
                   onClick={() => toggleTone(t.id)}
-                  className={`flex items-center gap-2 rounded-lg border px-4 py-3 transition-colors ${
+                  className={`flex flex-col items-center justify-center gap-2 rounded-xl border min-h-[88px] sm:min-h-[96px] transition-colors ${
                     selected
-                      ? "border-primary bg-primary text-primary-foreground"
+                      ? "border-primary bg-[linear-gradient(to_bottom_right,var(--primary-light),var(--primary-dark))] text-primary-foreground"
                       : "border-border bg-background hover:bg-accent/50"
                   }`}
                   title={t.description}
                 >
-                  <Icon className="size-5" />
-                  <span className="font-medium">{t.name}</span>
+                  <Icon className="size-7 sm:size-8" strokeWidth={1} />
+                  <span className="font-medium text-sm sm:text-base">{t.name}</span>
                 </button>
               );
             })}
@@ -254,191 +282,205 @@ export default function CreatePage() {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="language">Language</Label>
-          <Select value={language} onValueChange={setLanguage}>
-            <SelectTrigger id="language" className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {LANGUAGE_OPTIONS.map((l) => (
-                <SelectItem key={l.id} value={l.id}>
-                  {l.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="voiceTier">Voice quality</Label>
-          <Select
-            value={voiceTier}
-            onValueChange={(v) => {
-              const tier = v as VoiceTier;
-              setVoiceTier(tier);
-              const voices = getVoicesForTier(tier);
-              setVoiceId(voices[0].id);
-            }}
-          >
-            <SelectTrigger id="voiceTier" className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="standard">
-                Standard — Free, Neural2/WaveNet
-              </SelectItem>
-              <SelectItem value="premium">
-                Premium — Gemini Flash (~$0.025/story)
-              </SelectItem>
-              <SelectItem value="premium-plus">
-                Premium+ — Gemini Pro (~$0.05/story)
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="voice">Narrator voice</Label>
-          <Select
-            value={voiceId}
-            onValueChange={setVoiceId}
-          >
-            <SelectTrigger id="voice" className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {getVoicesForTier(voiceTier).map((v) => (
-                <SelectItem key={v.id} value={v.id}>
-                  {v.name} — {v.description}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-muted-foreground">
-            {voiceTier === "standard"
-              ? "Powered by Google Cloud Text-to-Speech"
-              : "Powered by Google Gemini TTS"}
-          </p>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="length">Length</Label>
-          <Select
-            value={lengthKey}
-            onValueChange={(v) => setLengthKey(v as "micro" | "short" | "medium" | "long")}
-          >
-            <SelectTrigger id="length" className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="micro">Micro</SelectItem>
-              <SelectItem value="short">Short</SelectItem>
-              <SelectItem value="medium">Medium</SelectItem>
-              <SelectItem value="long">Long</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="flex items-center justify-between rounded-lg border px-4 py-3">
-          <Label htmlFor="includeVoice" className="cursor-pointer flex-1">
-            Include voice narration
-          </Label>
-          <button
-            id="includeVoice"
-            type="button"
-            role="switch"
-            aria-checked={includeVoice}
-            onClick={() => setIncludeVoice((prev) => !prev)}
-            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
-              includeVoice ? "bg-primary" : "bg-muted"
-            }`}
-          >
-            <span
-              className={`pointer-events-none block h-5 w-5 rounded-full bg-background shadow ring-0 transition-transform ${
-                includeVoice ? "translate-x-5" : "translate-x-0.5"
-              }`}
-            />
-          </button>
-        </div>
-
-        <div className="flex items-center justify-between rounded-lg border px-4 py-3">
-          <Label htmlFor="includeImages" className="cursor-pointer flex-1">
-            Include illustrations
-          </Label>
-          <button
-            id="includeImages"
-            type="button"
-            role="switch"
-            aria-checked={includeImages}
-            onClick={() => setIncludeImages((prev) => !prev)}
-            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
-              includeImages ? "bg-primary" : "bg-muted"
-            }`}
-          >
-            <span
-              className={`pointer-events-none block h-5 w-5 rounded-full bg-background shadow ring-0 transition-transform ${
-                includeImages ? "translate-x-5" : "translate-x-0.5"
-              }`}
-            />
-          </button>
-        </div>
-
-        <div className="space-y-2">
           <Label htmlFor="userInput">Words or ideas for your story</Label>
-          <Textarea
-            id="userInput"
-            value={userInput}
-            onChange={(e) => setUserInput(e.target.value)}
-            rows={4}
-            placeholder="e.g. a little rabbit, a magical forest, a friendly owl..."
-          />
+          <div className="rounded-lg border-2 border-primary-muted bg-transparent">
+            <Textarea
+              id="userInput"
+              value={userInput}
+              onChange={(e) => setUserInput(e.target.value)}
+              rows={4}
+              placeholder="e.g. a little rabbit, a magical forest, a friendly owl..."
+              className="border-0 shadow-none focus-visible:ring-primary-muted/50"
+            />
+          </div>
         </div>
-
-        <Collapsible open={storyRulesOpen} onOpenChange={setStoryRulesOpen}>
-          <Card className="overflow-hidden">
-            <CollapsibleTrigger asChild>
-              <button
-                type="button"
-                className="w-full flex items-center justify-between px-6 py-4 text-left font-medium hover:bg-accent/50 transition-colors"
-              >
-                Story rules
-                {storyRulesOpen ? (
-                  <ChevronDownIcon className="size-4 text-muted-foreground" />
-                ) : (
-                  <ChevronRightIcon className="size-4 text-muted-foreground" />
-                )}
-              </button>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <CardContent className="border-t pt-4">
-                <Textarea
-                  value={storyRules}
-                  onChange={(e) => setStoryRules(e.target.value)}
-                  rows={4}
-                  placeholder="e.g. It's Halloween themed. Santa is always the bad guy..."
-                  className="min-h-24"
-                />
-              </CardContent>
-            </CollapsibleContent>
-          </Card>
-        </Collapsible>
 
         <div className="space-y-2">
           <Label>Tags</Label>
           <div className="flex flex-wrap gap-2">
-            {TAGS.map((t) => (
-              <Button
-                key={t}
-                type="button"
-                variant={tags.includes(t) ? "default" : "outline"}
-                size="sm"
-                onClick={() => toggleTag(t)}
-                className="rounded-full"
-              >
-                {t}
-              </Button>
-            ))}
+            {TAGS.map((t) => {
+              const selected = tags.includes(t);
+              return (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => toggleTag(t)}
+                  className={`rounded-full border-2 px-3 py-1.5 text-sm font-medium transition-colors ${
+                    selected
+                      ? "border-primary bg-primary text-primary-foreground hover:bg-primary/90"
+                      : "border-border bg-background hover:bg-accent/50"
+                  }`}
+                >
+                  {t}
+                </button>
+              );
+            })}
           </div>
+        </div>
+
+        {/* Extra options – accordion (adult settings, extra space to avoid accidental clicks) */}
+        <div className="mt-10">
+          <Accordion type="single" collapsible className="rounded-lg border">
+            <AccordionItem value="extra" className="border-none">
+              <AccordionTrigger className="flex w-full items-center justify-between px-4 py-3 hover:no-underline [&[data-state=open]_.icon-plus]:hidden [&[data-state=open]_.icon-minus]:block">
+                <span className="text-sm font-medium">Extra options</span>
+                <Plus className="icon-plus size-4 text-muted-foreground shrink-0" />
+                <Minus className="icon-minus hidden size-4 text-muted-foreground shrink-0" />
+              </AccordionTrigger>
+            <AccordionContent className="px-4 pb-4 pt-1 space-y-4">
+              {/* Language – flag buttons */}
+              <div className="space-y-2">
+                <Label>Language</Label>
+                <div className="flex gap-2">
+                  {LANGUAGE_OPTIONS.map((l) => (
+                    <button
+                      key={l.id}
+                      type="button"
+                      onClick={() => setLanguage(l.id)}
+                      className={`flex items-center justify-center w-12 h-12 rounded-lg border text-2xl transition-colors ${
+                        language === l.id
+                          ? "border-primary bg-primary/10 ring-2 ring-primary"
+                          : "border-border hover:bg-accent/50"
+                      }`}
+                      title={l.name}
+                      aria-label={l.name}
+                    >
+                      {l.flag}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Voice quality + Narrator – same row */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="voiceTier">Voice quality</Label>
+                  <Select
+                    value={voiceTier}
+                    onValueChange={(v) => {
+                      const tier = v as VoiceTier;
+                      setVoiceTier(tier);
+                      const voices = getVoicesForTier(tier);
+                      setVoiceId(voices[0].id);
+                    }}
+                  >
+                    <SelectTrigger id="voiceTier" className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="standard">Standard</SelectItem>
+                      <SelectItem value="premium">Premium</SelectItem>
+                      <SelectItem value="premium-plus">Premium+</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="voice">Narrator</Label>
+                  <div className="flex gap-2">
+                    <Select value={voiceId} onValueChange={setVoiceId}>
+                      <SelectTrigger id="voice" className="flex-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {getVoicesForTier(voiceTier).map((v) => (
+                          <SelectItem key={v.id} value={v.id}>
+                            {v.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={playPreview}
+                      disabled={previewLoading || previewPlaying || !includeVoice}
+                      title="Preview voice"
+                      aria-label="Preview voice"
+                    >
+                      {previewLoading ? (
+                        <Loader2 className="size-4 animate-spin" />
+                      ) : (
+                        <Play className="size-4" />
+                      )}
+                    </Button>
+                  </div>
+                  {previewError && (
+                    <p className="text-xs text-destructive">{previewError}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Length – with minutes */}
+              <div className="space-y-2">
+                <Label htmlFor="length">Length</Label>
+                <Select
+                  value={lengthKey}
+                  onValueChange={(v) => setLengthKey(v as "micro" | "short" | "medium" | "long")}
+                >
+                  <SelectTrigger id="length" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {LENGTH_OPTIONS.map((o) => (
+                      <SelectItem key={o.key} value={o.key}>
+                        {o.label} (~{o.minutes} min)
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Include voice + images – icon toggles */}
+              <div className="space-y-2">
+                <Label>Include</Label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIncludeVoice((prev) => !prev)}
+                    className={`flex items-center justify-center w-12 h-12 rounded-lg border transition-colors ${
+                      includeVoice
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border bg-muted/50 hover:bg-muted"
+                    }`}
+                    title="Voice narration"
+                    aria-label="Toggle voice narration"
+                    aria-pressed={includeVoice}
+                  >
+                    <Volume2 className="size-6" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIncludeImages((prev) => !prev)}
+                    className={`flex items-center justify-center w-12 h-12 rounded-lg border transition-colors ${
+                      includeImages
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border bg-muted/50 hover:bg-muted"
+                    }`}
+                    title="Illustrations"
+                    aria-label="Toggle illustrations"
+                    aria-pressed={includeImages}
+                  >
+                    <ImageIcon className="size-6" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Story rules */}
+              <div className="space-y-2">
+                <Label htmlFor="storyRules">Story rules</Label>
+                <Textarea
+                  id="storyRules"
+                  value={storyRules}
+                  onChange={(e) => setStoryRules(e.target.value)}
+                  rows={3}
+                  placeholder="e.g. It's Halloween themed. Santa is always the bad guy..."
+                  className="min-h-20"
+                />
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
         </div>
 
         {error && (
@@ -448,9 +490,11 @@ export default function CreatePage() {
         <Button
           onClick={onGenerate}
           disabled={loading}
-          className="w-full"
+          className="group relative h-20 w-full gap-2 overflow-hidden bg-primary text-base text-primary-foreground transition-colors hover:bg-transparent disabled:hover:bg-primary"
           size="lg"
         >
+          <span className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,var(--primary-light),var(--primary),var(--primary-dark),var(--primary))] bg-[length:200%_100%] opacity-0 transition-opacity group-hover:opacity-100 group-hover:animate-[gradient-roll_1.5s_linear_infinite] group-disabled:opacity-0" />
+          <WandSparkles className="size-5 shrink-0 group-hover:animate-[wiggle_0.5s_ease-in-out_infinite] group-disabled:animate-none" strokeWidth={1} />
           {loading ? "Generating your story…" : "Generate"}
         </Button>
       </div>

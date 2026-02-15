@@ -5,6 +5,7 @@ export async function generateParagraphs(spec: {
   globalStyleHint: string;
   userInput: string;
   tags: string[];
+  tagDirectives?: string;
   chapterIndex: number;
   recap?: string;
   storyRules?: string;
@@ -18,7 +19,9 @@ export async function generateParagraphs(spec: {
     `Chapter index: ${spec.chapterIndex}`,
     spec.recap ? `Recap so far: ${spec.recap}` : "",
     `User input: ${spec.userInput}`,
-    `Tags: ${spec.tags.join(", ")}`,
+    spec.tagDirectives
+      ? `TAG DIRECTIVES (mandatory — follow these for selected tags):\n${spec.tagDirectives}`
+      : "",
     `Style: ${spec.globalStyleHint}`,
     spec.instructionsFromFile
       ? `Global rules (from instructions.md):\n${spec.instructionsFromFile}`

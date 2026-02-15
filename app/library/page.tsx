@@ -1,12 +1,10 @@
 import { createRouteHandlerClient } from "@/lib/supabase-route-handler";
 import { supabaseServer } from "@/lib/supabase-server";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import StoryList from "./StoryList";
-import { Button } from "@/components/ui/button";
 
 export default async function LibraryPage() {
-  let user: { id: string } | null = null;
+  let user: { id: string; email?: string } | null = null;
   try {
     const supabase = await createRouteHandlerClient();
     const { data } = await supabase.auth.getUser();
@@ -28,23 +26,24 @@ export default async function LibraryPage() {
     .limit(50);
 
   return (
-    <main className="min-h-screen p-6 md:p-8 max-w-3xl mx-auto">
-      <nav className="flex items-center justify-between mb-8">
+    <main className="min-h-screen p-6 md:p-8 max-w-3xl mx-auto flex flex-col">
+      <nav className="mb-8">
         <h1 className="text-2xl font-bold">Library</h1>
-        <div className="flex items-center gap-4">
-          <Button asChild>
-            <Link href="/create">+ New story</Link>
-          </Button>
-          <a
-            href="/api/auth/signout"
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Sign out
-          </a>
-        </div>
       </nav>
 
       <StoryList stories={stories ?? []} />
+
+      <footer className="mt-auto pt-8 flex flex-col items-center gap-2 text-center">
+        {user.email && (
+          <p className="text-sm text-muted-foreground">{user.email}</p>
+        )}
+        <a
+          href="/api/auth/signout"
+          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          Sign out
+        </a>
+      </footer>
     </main>
   );
 }

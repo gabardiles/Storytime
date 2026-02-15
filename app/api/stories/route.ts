@@ -20,6 +20,7 @@ import {
 import { generateVisualConsistencyRef } from "@/lib/imageConsistency";
 import { createRouteHandlerClient } from "@/lib/supabase-route-handler";
 import { getLanguageOption } from "@/lib/languages";
+import { buildTagDirectivesBlock } from "@/lib/tags";
 
 export async function POST(req: Request) {
   try {
@@ -93,6 +94,7 @@ export async function POST(req: Request) {
       globalStyleHint: spec.globalStyleHint,
       userInput,
       tags,
+      tagDirectives: spec.tagDirectives,
       chapterIndex: 1,
       storyRules: spec.storyRules,
       instructionsFromFile: spec.instructionsFromFile,
@@ -141,6 +143,7 @@ export async function POST(req: Request) {
             userId: user.id,
             visualConsistencyRef,
             imageIndexInStory: i,
+            tags,
           });
           if (!coverImageUrl) coverImageUrl = imageUrl;
           await updateParagraph(chapterId, idx + 1, { imageUrl, imagePrompt });
