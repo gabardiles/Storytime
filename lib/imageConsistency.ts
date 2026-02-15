@@ -20,11 +20,13 @@ export async function generateVisualConsistencyRef(
         content: `You create a visual reference for a children's book illustrator. Output a single paragraph (2-4 sentences, max 120 words) that will be used for EVERY illustration in the same story. Characters must look IDENTICAL in every image.
 
 Include:
-1. Each main character: species, exact colors, distinctive features (e.g. "orange fur, white chest patch"), face/eye style. Repeat the SAME description in every image prompt.
-2. The setting: environment type, color palette, mood.
-3. Style note: "Same character design, same proportions, same colors across all scenes."
+1. Each main character ONLY: species, exact colors, distinctive features (e.g. "orange fur, white chest patch"), face/eye style. Be very specific so the illustrator draws the same character every time.
+2. General palette: "Muted earthy tones, moss greens, ochre, soft cream" (or similar).
+3. Note: "Same character design in every scene. Setting and location CAN vary between illustrations - each scene may show a different moment in a different place."
 
-Write in ${language}. Be very specific (exact colors, shapes) so the illustrator draws the same character every time. Example: "Whiskers: small fox, orange fur, white chest, round brown eyes, soft ears. Squeaky: tiny gray mouse, pink ears. Forest setting: moss green, ochre, soft cream. Same designs in every scene."`,
+Do NOT lock the setting to one place. The story may move. Characters stay the same; where they are can change.
+
+Write in ${language}. Example: "Whiskers: small fox, orange fur, white chest, round brown eyes, soft ears. Squeaky: tiny gray mouse, pink ears. Muted palette: moss green, ochre, cream. Same character designs; setting varies by scene."`,
       },
       {
         role: "user",

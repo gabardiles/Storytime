@@ -21,7 +21,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { ChevronDownIcon, ChevronRightIcon } from "lucide-react";
+import { ChevronDownIcon, ChevronRightIcon, Hourglass } from "lucide-react";
 import {
   getVoicesForTier,
   type VoiceTier,
@@ -114,6 +114,18 @@ export default function CreatePage() {
 
   return (
     <main className="min-h-screen p-6 md:p-8 max-w-2xl mx-auto">
+      {loading && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          aria-live="polite"
+          aria-busy="true"
+        >
+          <div className="flex flex-col items-center gap-4 rounded-xl border bg-background px-8 py-6 shadow-lg">
+            <Hourglass className="size-10 animate-pulse text-primary" />
+            <p className="text-lg font-medium">Creating your story...</p>
+          </div>
+        </div>
+      )}
       <nav className="flex items-center gap-4 mb-8">
         <Link
           href="/library"

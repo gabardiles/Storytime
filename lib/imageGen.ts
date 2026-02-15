@@ -37,14 +37,19 @@ export type GenerateImageOptions = {
   userId: string;
   /** Visual consistency reference for character/setting across the story */
   visualConsistencyRef?: string;
+  /** 0 = opening scene, 1+ = later scene */
+  imageIndexInStory?: number;
 };
 
 export async function generateImageForParagraph(
   paragraphText: string,
   options: GenerateImageOptions
 ): Promise<{ imageUrl: string; imagePrompt: string }> {
+  const sceneRole =
+    options.imageIndexInStory === 0 ? "opening" : "later";
   const prompt = buildImagePrompt(paragraphText, {
     visualConsistencyRef: options.visualConsistencyRef,
+    sceneRole,
   });
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 

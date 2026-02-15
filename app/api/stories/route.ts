@@ -131,7 +131,8 @@ export async function POST(req: Request) {
       });
       const imageCount = getImageCountForChapter(lengthKey as "micro" | "short" | "medium" | "long");
       const imageIndices = getParagraphIndicesForImages(paragraphs.length, imageCount);
-      for (const idx of imageIndices) {
+      for (let i = 0; i < imageIndices.length; i++) {
+        const idx = imageIndices[i];
         try {
           const { imageUrl, imagePrompt } = await generateImageForParagraph(paragraphs[idx], {
             storyId,
@@ -139,6 +140,7 @@ export async function POST(req: Request) {
             paragraphIndex: idx + 1,
             userId: user.id,
             visualConsistencyRef,
+            imageIndexInStory: i,
           });
           if (!coverImageUrl) coverImageUrl = imageUrl;
           await updateParagraph(chapterId, idx + 1, { imageUrl, imagePrompt });

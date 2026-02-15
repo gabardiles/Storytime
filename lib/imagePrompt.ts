@@ -26,28 +26,44 @@ export type ImagePromptContext = {
   tags?: string[];
   /** Visual consistency reference: character and setting descriptions to reuse across all images */
   visualConsistencyRef?: string;
+  /** Scene role: first image = opening, later images = story progression */
+  sceneRole?: "opening" | "later";
+};
+
+/** Instructions that vary by scene position to create strong visual variety across the story */
+const SCENE_ROLE_PROMPTS = {
+  opening:
+    "OPENING SCENE - First illustration only. Wide establishing shot. Introduce characters and the story world. Set the mood and place. Welcoming, curious. This is how the story begins.",
+  later:
+    "LATER SCENE - CRITICAL: This must look COMPLETELY DIFFERENT from the opening. Show a NEW moment: different location, different action, or different part of the story. If the opening showed characters facing each other, show them doing something else - walking, playing, exploring, resting. Use a different composition: closer shot, different angle, or different arrangement. Different background and setting. Do NOT repeat the same scene, same pose, or same framing. This illustration advances the narrative to a new moment.",
 };
 
 /**
  * Build a DALL-E prompt for a story paragraph, following IMAGE_STYLE_GUIDE Section 10.
  * When visualConsistencyRef is provided, characters and setting stay consistent across the story.
+ * When sceneRole is provided, adds instructions to vary opening vs later images.
  */
 export function buildImagePrompt(
   paragraphText: string,
   context?: ImagePromptContext
 ): string {
   const sceneDescription = paragraphText.slice(0, 500).trim();
+  const sceneLine =
+    context?.sceneRole === "later"
+      ? `Scene to illustrate (a NEW moment, different from the opening): ${sceneDescription}`
+      : `Scene to illustrate: ${sceneDescription}`;
   const parts = [
     STYLE_ANCHOR,
     FORMAT_COMPOSITION,
     CHARACTER_RULES,
     ...(context?.visualConsistencyRef
       ? [
-          `CHARACTER AND SCENE CONSISTENCY - draw the SAME characters with the SAME appearance in every image: ${context.visualConsistencyRef}`,
+          `CHARACTER CONSISTENCY - draw the SAME characters with the SAME appearance: ${context.visualConsistencyRef}`,
         ]
       : []),
+    ...(context?.sceneRole ? [SCENE_ROLE_PROMPTS[context.sceneRole]] : []),
     LIGHTING,
-    `Scene to illustrate: ${sceneDescription}`,
+    sceneLine,
     TEXTURE_ENFORCEMENT,
     ANTI_DRIFT,
   ];

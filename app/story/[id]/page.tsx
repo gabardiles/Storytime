@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatTonesForDisplay } from "@/lib/tones";
 import { ImageLightbox } from "@/components/ImageLightbox";
-import { ImageIcon } from "lucide-react";
+import { ImageIcon, Play, Pause } from "lucide-react";
 
 function getImageCountForChapter(_lengthKey: string): number {
   return 2;
@@ -236,7 +236,7 @@ export default function StoryPage({
                       className="flex-shrink-0 rounded-full"
                       aria-label={playingId === p.id ? "Pause" : "Play"}
                     >
-                      {playingId === p.id ? "⏸" : "▶"}
+                      {playingId === p.id ? <Pause className="size-5" /> : <Play className="size-5" />}
                     </Button>
                   )}
                   <div className="flex-1 min-w-0">
