@@ -1,44 +1,43 @@
 /**
- * ElevenLabs voice options for story narration.
- * Voice IDs from ElevenLabs premade voices.
+ * Google Cloud TTS voice options for story narration.
+ * Voice names from Cloud Text-to-Speech (Neural2, Chirp HD, Wavenet).
  */
 export const VOICE_OPTIONS = [
   {
     id: "default",
     name: "Default",
-    voiceId: "21m00Tcm4TlvDq8ikWAM", // Rachel - warm female
+    voiceName: "en-US-Neural2-F", // Warm female narrator
     description: "Warm, friendly narrator",
   },
   {
     id: "old-man",
     name: "Grandpa (old man)",
-    voiceId: "JBFqnCBsd6RMkjVDRZzb", // George - mature male, good for storytelling
+    voiceName: "en-US-Neural2-D", // Mature male
     description: "Wise, gentle storyteller",
   },
   {
     id: "adam",
     name: "Adam",
-    voiceId: "pNInz6obpgDQGcFmaJgB",
+    voiceName: "en-US-Neural2-C",
     description: "Clear male voice",
   },
   {
     id: "old-slow-man",
     name: "Old slow man",
-    voiceId: "WL407qSICo0Q6gjDHRJq",
+    voiceName: "en-US-Wavenet-D",
     description: "Slow, soothing old man",
   },
 ] as const;
 
 export type VoiceOptionId = (typeof VOICE_OPTIONS)[number]["id"];
 
-export function getVoiceId(voiceOptionId: string): string {
+export function getVoiceName(voiceOptionId: string): string {
   const option = VOICE_OPTIONS.find((v) => v.id === voiceOptionId);
-  const optionVoiceId = option?.voiceId ?? VOICE_OPTIONS[0].voiceId;
+  const voiceName = option?.voiceName ?? VOICE_OPTIONS[0].voiceName;
 
-  // Only use env override when user selected "default" (allows custom default voice)
-  if (voiceOptionId === "default" && process.env.ELEVENLABS_VOICE_ID) {
-    return process.env.ELEVENLABS_VOICE_ID;
+  if (voiceOptionId === "default" && process.env.GOOGLE_TTS_VOICE_NAME) {
+    return process.env.GOOGLE_TTS_VOICE_NAME;
   }
 
-  return optionVoiceId;
+  return voiceName;
 }

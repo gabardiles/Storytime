@@ -20,7 +20,7 @@ cp .env.example .env.local
 
 - **Supabase**: Create a project at [supabase.com](https://supabase.com). Get URL and keys from Project Settings > API.
 - **OpenAI**: Get an API key from [platform.openai.com](https://platform.openai.com).
-- **ElevenLabs**: Get an API key and voice ID from [elevenlabs.io](https://elevenlabs.io).
+- **Google Cloud TTS**: Create a project at [console.cloud.google.com](https://console.cloud.google.com), enable Text-to-Speech API, create a service account, download JSON key. Set `GOOGLE_APPLICATION_CREDENTIALS_JSON` to the full JSON string (1M chars/month free).
 
 ### 3. Database
 

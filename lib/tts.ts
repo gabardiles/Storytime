@@ -1,7 +1,47 @@
+import { TextToSpeechClient } from "@google-cloud/text-to-speech";
 import { supabaseServer } from "./supabase-server";
-import { getVoiceId } from "./voices";
+import { getVoiceName } from "./voices";
 
-const ELEVENLABS_API_URL = "https://api.elevenlabs.io/v1/text-to-speech";
+/** Map app language codes to Google TTS language codes */
+const LANGUAGE_TO_GOOGLE: Record<string, string> = {
+  en: "en-US",
+  sv: "sv-SE",
+};
+
+/** Fallback voices for non-English (no Neural2 for all languages) */
+const LANGUAGE_FALLBACK_VOICES: Record<string, string> = {
+  "en-US": "en-US-Neural2-F",
+  "sv-SE": "sv-SE-Wavenet-A",
+};
+
+function getGoogleVoiceName(
+  voiceOptionId: string,
+  languageCode?: string
+): string {
+  const googleLang =
+    LANGUAGE_TO_GOOGLE[languageCode ?? "en"] ?? "en-US";
+  const isEnglish = googleLang === "en-US";
+
+  if (isEnglish) {
+    return getVoiceName(voiceOptionId);
+  }
+  return LANGUAGE_FALLBACK_VOICES[googleLang] ?? "en-US-Neural2-F";
+}
+
+function getGoogleClient(): TextToSpeechClient {
+  const credentialsJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
+  if (credentialsJson) {
+    try {
+      const credentials = JSON.parse(credentialsJson);
+      return new TextToSpeechClient({ credentials });
+    } catch {
+      throw new Error(
+        "GOOGLE_APPLICATION_CREDENTIALS_JSON is invalid JSON"
+      );
+    }
+  }
+  return new TextToSpeechClient();
+}
 
 export async function generateAudioForParagraph(
   text: string,
@@ -18,49 +58,37 @@ export async function generateAudioForParagraph(
   if (process.env.SKIP_TTS === "true" || process.env.SKIP_TTS === "1") {
     return null;
   }
-  const apiKey = process.env.ELEVENLABS_API_KEY;
-  const voiceId =
-    options.voiceId ??
-    (options.voiceOptionId ? getVoiceId(options.voiceOptionId) : undefined) ??
-    process.env.ELEVENLABS_VOICE_ID ??
-    "21m00Tcm4TlvDq8ikWAM";
 
-  if (!apiKey) {
-    throw new Error("ELEVENLABS_API_KEY is not set");
-  }
+  const voiceOptionId = options.voiceId ?? options.voiceOptionId ?? "default";
+  const voiceName = getGoogleVoiceName(voiceOptionId, options.languageCode);
+  const googleLang =
+    LANGUAGE_TO_GOOGLE[options.languageCode ?? "en"] ?? "en-US";
 
-  const isEnglish = !options.languageCode || options.languageCode === "en";
-  const body: Record<string, unknown> = {
-    text,
-    model_id: isEnglish ? "eleven_monolingual_v1" : "eleven_multilingual_v2",
-  };
-  if (!isEnglish) {
-    body.language_code = options.languageCode;
-  }
+  const client = getGoogleClient();
 
-  const response = await fetch(`${ELEVENLABS_API_URL}/${voiceId}`, {
-    method: "POST",
-    headers: {
-      Accept: "audio/mpeg",
-      "Content-Type": "application/json",
-      "xi-api-key": apiKey,
+  const [response] = await client.synthesizeSpeech({
+    input: { text },
+    voice: {
+      languageCode: googleLang,
+      name: voiceName,
     },
-    body: JSON.stringify(body),
+    audioConfig: {
+      audioEncoding: "MP3",
+      speakingRate: 0.95,
+    },
   });
 
-  if (!response.ok) {
-    const errText = await response.text();
-    throw new Error(`ElevenLabs TTS error: ${response.status} ${errText}`);
+  const audioContent = response.audioContent;
+  if (!audioContent || !(audioContent instanceof Uint8Array)) {
+    throw new Error("Google TTS did not return audio");
   }
 
-  const audioBuffer = await response.arrayBuffer();
   const supabase = supabaseServer();
-
   const storagePath = `${options.userId}/${options.storyId}/${options.chapterId}_${options.paragraphIndex}.mp3`;
 
   const { error } = await supabase.storage
     .from("story-audio")
-    .upload(storagePath, audioBuffer, {
+    .upload(storagePath, audioContent, {
       contentType: "audio/mpeg",
       upsert: true,
     });
