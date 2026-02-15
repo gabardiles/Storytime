@@ -4,6 +4,24 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { formatTonesForDisplay } from "@/lib/tones";
+import { ImageLightbox } from "@/components/ImageLightbox";
+import { ImageIcon } from "lucide-react";
+
+function getImageCountForChapter(_lengthKey: string): number {
+  return 2;
+}
+
+function getParagraphIndicesForImages(paragraphCount: number, imageCount: number): number[] {
+  if (paragraphCount <= 0 || imageCount <= 0) return [];
+  if (imageCount >= paragraphCount) return Array.from({ length: paragraphCount }, (_, i) => i);
+  if (imageCount === 1) return [0];
+  const indices: number[] = [];
+  for (let i = 0; i < imageCount; i++) {
+    indices.push(Math.round((i * (paragraphCount - 1)) / (imageCount - 1)));
+  }
+  return indices;
+}
 
 type Paragraph = {
   id: string;
@@ -11,6 +29,8 @@ type Paragraph = {
   text: string;
   audio_url?: string | null;
   audioUrl?: string | null;
+  image_url?: string | null;
+  imageUrl?: string | null;
 };
 
 type Chapter = {
@@ -25,6 +45,7 @@ type Story = {
   length_key: string;
   status: string;
   chapters: Chapter[];
+  context_json?: { includeImages?: boolean };
 };
 
 export default function StoryPage({
@@ -38,6 +59,7 @@ export default function StoryPage({
   const [continueError, setContinueError] = useState<string | null>(null);
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [storyId, setStoryId] = useState<string>("");
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
 
   useEffect(() => {
     params.then((p) => setStoryId(p.id));
@@ -157,7 +179,7 @@ export default function StoryPage({
 
       <h1 className="text-2xl font-bold mb-2">Story</h1>
       <p className="text-muted-foreground text-sm mb-8">
-        Tone: {story.tone} · Length: {story.length_key}
+        Tone: {formatTonesForDisplay(story.tone)} · Length: {story.length_key}
       </p>
 
       <div className="space-y-8">
@@ -168,22 +190,55 @@ export default function StoryPage({
               Chapter {ch.chapter_index}
             </h2>
             <div className="space-y-4">
-              {(ch.paragraphs ?? []).map((p) => {
+              {(ch.paragraphs ?? []).map((p, paraIdx) => {
                 const audioUrl = p.audio_url ?? p.audioUrl;
+                const imageUrl = p.image_url ?? p.imageUrl;
+                const includeImages = (story.context_json as { includeImages?: boolean } | undefined)?.includeImages !== false;
+                const imageIndices = includeImages
+                  ? getParagraphIndicesForImages(
+                      ch.paragraphs?.length ?? 0,
+                      getImageCountForChapter(story.length_key)
+                    )
+                  : [];
+                const hasImageSlot = imageIndices.includes(paraIdx);
                 return (
-                <div key={p.id} className="flex gap-3 items-start">
-                  <Button
-                    type="button"
-                    variant={playingId === p.id ? "default" : "secondary"}
-                    size="icon"
-                    onClick={() => audioUrl && handlePlay(p)}
-                    disabled={!audioUrl}
-                    className="flex-shrink-0 rounded-full"
-                    aria-label={audioUrl ? (playingId === p.id ? "Pause" : "Play") : "No audio"}
-                    title={!audioUrl ? "No audio for this paragraph" : undefined}
-                  >
-                    {playingId === p.id ? "⏸" : "▶"}
-                  </Button>
+                <div key={p.id} className="flex flex-col gap-2">
+                  {hasImageSlot && (
+                    imageUrl ? (
+                      <button
+                        type="button"
+                        onClick={() => setLightboxImage(imageUrl)}
+                        className="block w-full rounded-lg overflow-hidden focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                        aria-label="View full size"
+                      >
+                        <img
+                          src={imageUrl}
+                          alt=""
+                          className="w-full max-w-md mx-auto aspect-square object-cover rounded-lg"
+                        />
+                      </button>
+                    ) : (
+                      <div
+                        className="flex items-center justify-center w-full max-w-md mx-auto aspect-square rounded-lg border-2 border-dashed border-muted-foreground/30 bg-muted/30"
+                        aria-hidden
+                      >
+                        <ImageIcon className="size-12 text-muted-foreground/40" />
+                      </div>
+                    )
+                  )}
+                <div className="flex gap-3 items-start">
+                  {audioUrl && (
+                    <Button
+                      type="button"
+                      variant={playingId === p.id ? "default" : "secondary"}
+                      size="icon"
+                      onClick={() => handlePlay(p)}
+                      className="flex-shrink-0 rounded-full"
+                      aria-label={playingId === p.id ? "Pause" : "Play"}
+                    >
+                      {playingId === p.id ? "⏸" : "▶"}
+                    </Button>
+                  )}
                   <div className="flex-1 min-w-0">
                     {audioUrl && (
                       <audio
@@ -208,6 +263,7 @@ export default function StoryPage({
                     </p>
                   </div>
                 </div>
+                </div>
               );
               })}
             </div>
@@ -215,6 +271,12 @@ export default function StoryPage({
           </Card>
         ))}
       </div>
+
+      <ImageLightbox
+        open={lightboxImage !== null}
+        onOpenChange={(open) => !open && setLightboxImage(null)}
+        src={lightboxImage ?? ""}
+      />
 
       <div className="mt-8 flex flex-col gap-4">
         {continueError && (

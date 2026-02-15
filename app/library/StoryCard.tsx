@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { InfoIcon, Trash2Icon } from "lucide-react";
+import { formatTonesForDisplay } from "@/lib/tones";
 
 type Story = {
   id: string;
@@ -50,7 +51,7 @@ export default function StoryCard({
               </div>
             )}
             <div className="text-sm text-muted-foreground mt-1">
-              {new Date(story.created_at).toLocaleString()} · {story.tone} ·{" "}
+              {new Date(story.created_at).toLocaleString()} · {formatTonesForDisplay(story.tone)} ·{" "}
               {story.length_key}
             </div>
           </Link>

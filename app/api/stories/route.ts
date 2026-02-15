@@ -10,7 +10,14 @@ import {
   markChapterDone,
   markStoryDone,
   updateStory,
+  updateParagraph,
 } from "@/lib/db";
+import {
+  getImageCountForChapter,
+  getParagraphIndicesForImages,
+  generateImageForParagraph,
+} from "@/lib/imageGen";
+import { generateVisualConsistencyRef } from "@/lib/imageConsistency";
 import { createRouteHandlerClient } from "@/lib/supabase-route-handler";
 import { getLanguageOption } from "@/lib/languages";
 
@@ -35,6 +42,8 @@ export async function POST(req: Request) {
     const storyRules = body.storyRules ?? "";
     const voiceId = body.voiceId ?? "default";
     const language = body.language ?? "en";
+    const includeImages = body.includeImages !== false;
+    const includeVoice = body.includeVoice !== false;
     const langOption = getLanguageOption(language);
 
     const spec = buildStorySpec({
@@ -60,6 +69,8 @@ export async function POST(req: Request) {
         storyRules,
         voiceId,
         language,
+        includeImages,
+        includeVoice,
         globalStyleHint: spec.globalStyleHint,
         rulesVersion: spec.rules?.version ?? 1,
         initialPrompt,
@@ -89,14 +100,16 @@ export async function POST(req: Request) {
     const paragraphInserts = [];
     for (let idx = 0; idx < paragraphs.length; idx++) {
       const text = paragraphs[idx];
-      const audioUrl = await generateAudioForParagraph(text, {
-        userId: user.id,
-        storyId,
-        chapterId,
-        paragraphIndex: idx + 1,
-        voiceOptionId: voiceId,
-        languageCode: langOption.languageCode,
-      });
+      const audioUrl = includeVoice
+        ? await generateAudioForParagraph(text, {
+            userId: user.id,
+            storyId,
+            chapterId,
+            paragraphIndex: idx + 1,
+            voiceOptionId: voiceId,
+            languageCode: langOption.languageCode,
+          })
+        : null;
       paragraphInserts.push({
         chapterId,
         paragraphIndex: idx + 1,
@@ -106,6 +119,32 @@ export async function POST(req: Request) {
     }
 
     await insertParagraphs(paragraphInserts);
+
+    let visualConsistencyRef: string | undefined;
+    let coverImageUrl: string | undefined;
+    if (includeImages) {
+      visualConsistencyRef = await generateVisualConsistencyRef(paragraphs, {
+        language: langOption.promptName,
+      });
+      const imageCount = getImageCountForChapter(lengthKey as "micro" | "short" | "medium" | "long");
+      const imageIndices = getParagraphIndicesForImages(paragraphs.length, imageCount);
+      for (const idx of imageIndices) {
+      try {
+        const { imageUrl, imagePrompt } = await generateImageForParagraph(paragraphs[idx], {
+          storyId,
+          chapterId,
+          paragraphIndex: idx + 1,
+          userId: user.id,
+          visualConsistencyRef,
+        });
+        if (!coverImageUrl) coverImageUrl = imageUrl;
+        await updateParagraph(chapterId, idx + 1, { imageUrl, imagePrompt });
+      } catch (err) {
+        console.error(`Image generation failed for paragraph ${idx + 1}:`, err);
+      }
+    }
+    }
+
     await markChapterDone(chapterId);
 
     const firstParagraph = paragraphs[0] ?? "";
@@ -120,6 +159,10 @@ export async function POST(req: Request) {
         storyRules,
         voiceId,
         language,
+        includeImages,
+        includeVoice,
+        visualConsistencyRef,
+        coverImageUrl,
         globalStyleHint: spec.globalStyleHint,
         rulesVersion: spec.rules?.version ?? 1,
         initialPrompt,

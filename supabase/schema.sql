@@ -156,3 +156,10 @@ with check (
 -- Run this policy so public URLs work (Storage > Policies > New policy, or run in SQL Editor):
 -- insert into storage.buckets (id, name, public) values ('story-audio', 'story-audio', true) on conflict (id) do update set public = true;
 -- create policy "story-audio public read" on storage.objects for select using (bucket_id = 'story-audio');
+
+-- Storage bucket for story images (DALL-E generated illustrations)
+-- Bucket name: story-images
+-- Public: Yes (so image URLs work without signed URLs)
+-- Run in Supabase SQL Editor:
+-- insert into storage.buckets (id, name, public) values ('story-images', 'story-images', true) on conflict (id) do update set public = true;
+-- create policy "story-images public read" on storage.objects for select using (bucket_id = 'story-images');

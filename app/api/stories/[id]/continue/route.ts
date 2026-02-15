@@ -1,7 +1,18 @@
 import { NextResponse } from "next/server";
 import { loadRuleset } from "@/lib/rulesets";
 import { loadInstructions } from "@/lib/instructions";
-import { getStoryFull, insertChapter, insertParagraphs, markChapterDone } from "@/lib/db";
+import {
+  getStoryFull,
+  insertChapter,
+  insertParagraphs,
+  markChapterDone,
+  updateParagraph,
+} from "@/lib/db";
+import {
+  getImageCountForChapter,
+  getParagraphIndicesForImages,
+  generateImageForParagraph,
+} from "@/lib/imageGen";
 import { generateParagraphs } from "@/lib/textGen";
 import { generateAudioForParagraph } from "@/lib/tts";
 import { createRouteHandlerClient } from "@/lib/supabase-route-handler";
@@ -42,6 +53,9 @@ export async function POST(
     const storyRules = (ctx.storyRules as string) ?? "";
     const voiceId = (ctx.voiceId as string) ?? "default";
     const language = (ctx.language as string) ?? "en";
+    const includeImages = (ctx.includeImages as boolean) !== false;
+    const includeVoice = (ctx.includeVoice as boolean) !== false;
+    const visualConsistencyRef = ctx.visualConsistencyRef as string | undefined;
     const langOption = getLanguageOption(language);
     const globalStyleHint =
       (ctx.globalStyleHint as string) ?? `Tone: ${story.tone}. Bedtime-safe.`;
@@ -73,14 +87,16 @@ export async function POST(
     const paragraphInserts = [];
     for (let idx = 0; idx < paragraphs.length; idx++) {
       const text = paragraphs[idx];
-      const audioUrl = await generateAudioForParagraph(text, {
-        userId: user.id,
-        storyId,
-        chapterId,
-        paragraphIndex: idx + 1,
-        voiceOptionId: voiceId,
-        languageCode: langOption.languageCode,
-      });
+      const audioUrl = includeVoice
+        ? await generateAudioForParagraph(text, {
+            userId: user.id,
+            storyId,
+            chapterId,
+            paragraphIndex: idx + 1,
+            voiceOptionId: voiceId,
+            languageCode: langOption.languageCode,
+          })
+        : null;
       paragraphInserts.push({
         chapterId,
         paragraphIndex: idx + 1,
@@ -90,6 +106,27 @@ export async function POST(
     }
 
     await insertParagraphs(paragraphInserts);
+
+    if (includeImages) {
+      const lengthKey = story.length_key as "micro" | "short" | "medium" | "long";
+      const imageCount = getImageCountForChapter(lengthKey);
+      const imageIndices = getParagraphIndicesForImages(paragraphs.length, imageCount);
+      for (const idx of imageIndices) {
+        try {
+          const { imageUrl, imagePrompt } = await generateImageForParagraph(paragraphs[idx], {
+            storyId,
+            chapterId,
+            paragraphIndex: idx + 1,
+            userId: user.id,
+            visualConsistencyRef,
+          });
+          await updateParagraph(chapterId, idx + 1, { imageUrl, imagePrompt });
+        } catch (err) {
+          console.error(`Image generation failed for paragraph ${idx + 1}:`, err);
+        }
+      }
+    }
+
     await markChapterDone(chapterId);
 
     return NextResponse.json({

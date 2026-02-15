@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { formatTonesForDisplay } from "@/lib/tones";
 
 /* ── Fonts assigned via CSS variables from layout.tsx ── */
 const BOOK_FONTS = [
@@ -59,6 +60,9 @@ const SIZES: Record<SizeVariant, SizeDef> = {
   large:  { w: 148, h: 200, mobileW: 120, mobileH: 172, titleSize: "sm:text-base", mobileTitleSize: "text-sm",     subtitleSize: "text-[10px]" },
 };
 
+/* ── Cover style: image with overlay, or solid color ── */
+type CoverStyle = "image-dark" | "image-light" | "color";
+
 /* ── Props ── */
 type Story = {
   id: string;
@@ -80,15 +84,23 @@ export default function BookCover({
   onClick: () => void;
 }) {
   const hash = hashStr(story.id);
+  const coverImageUrl = story.context_json?.coverImageUrl as string | undefined;
 
   const sizeKey: SizeVariant = (["small", "medium", "large"] as const)[hash % 3];
   const size = SIZES[sizeKey];
   const palette = COVER_PALETTES[hash % COVER_PALETTES.length];
   const fontFamily = BOOK_FONTS[index % BOOK_FONTS.length];
 
+  const coverStyles: CoverStyle[] = ["image-dark", "image-dark", "image-light", "image-light", "color"];
+  const coverStyle: CoverStyle = coverImageUrl
+    ? coverStyles[hash % 5]
+    : "color";
+  const useImage = coverImageUrl && coverStyle !== "color";
+  const isDarkOverlay = coverStyle === "image-dark";
+
   const title = story.title ?? `Story ${story.id.slice(0, 8)}`;
   const displayTitle = title.length > 30 ? `${title.slice(0, 28)}...` : title;
-  const tone = story.tone;
+  const toneDisplay = formatTonesForDisplay(story.tone);
   const lang = (story.context_json?.language as string) ?? "en";
   const langLabel = lang === "sv" ? "SWEDISH" : "ENGLISH";
 
@@ -127,7 +139,7 @@ export default function BookCover({
 
       {/* ── Front cover ── */}
       <div
-        className="absolute top-0 bottom-0 rounded-r-sm"
+        className="absolute top-0 bottom-0 rounded-r-sm overflow-hidden"
         style={{
           left: SPINE_W,
           right: 0,
@@ -138,7 +150,26 @@ export default function BookCover({
             1px 2px 4px rgba(0,0,0,0.12)
           `,
         }}
-      />
+      >
+        {useImage && (
+          <>
+            <img
+              src={coverImageUrl}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+            <div
+              className="absolute inset-0"
+              style={{
+                background: isDarkOverlay
+                  ? "rgba(0,0,0,0.75)"
+                  : "rgba(255,255,255,0.78)",
+              }}
+              aria-hidden
+            />
+          </>
+        )}
+      </div>
 
       {/* ── Spine-to-cover crease line ── */}
       <div
@@ -159,19 +190,28 @@ export default function BookCover({
         style={{
           left: SPINE_W,
           right: 0,
-          background: `linear-gradient(to right,
-            rgba(255,255,255,0.12) 0%,
-            rgba(255,255,255,0) 25%,
-            rgba(0,0,0,0.04) 60%,
-            rgba(0,0,0,0.1) 100%)`,
+          background: useImage
+            ? "linear-gradient(to right, rgba(255,255,255,0.06) 0%, transparent 40%, rgba(0,0,0,0.08) 100%)"
+            : `linear-gradient(to right,
+                rgba(255,255,255,0.12) 0%,
+                rgba(255,255,255,0) 25%,
+                rgba(0,0,0,0.04) 60%,
+                rgba(0,0,0,0.1) 100%)`,
         }}
       />
 
       {/* ── Title & tone content ── */}
       <div
-        className="relative flex h-full w-full flex-col items-center justify-center gap-1 py-4 text-center"
+        className={cn(
+          "relative flex h-full w-full flex-col items-center justify-center gap-1 py-4 text-center",
+          useImage && "drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]"
+        )}
         style={{
-          color: palette.text,
+          color: useImage
+            ? isDarkOverlay
+              ? "#F8F0E3"
+              : "#1a1a1a"
+            : palette.text,
           paddingLeft: SPINE_W + 8,
           paddingRight: 8,
         }}
@@ -189,7 +229,8 @@ export default function BookCover({
         <div className="mt-auto flex flex-col items-center gap-0.5">
           <span
             className={cn(
-              "uppercase tracking-[0.15em] opacity-40 font-sans",
+              "uppercase tracking-[0.15em] font-sans",
+              useImage ? "opacity-80" : "opacity-40",
               size.subtitleSize
             )}
           >
@@ -197,11 +238,12 @@ export default function BookCover({
           </span>
           <span
             className={cn(
-              "uppercase tracking-widest opacity-50 font-sans",
+              "uppercase tracking-widest font-sans",
+              useImage ? "opacity-90" : "opacity-50",
               size.subtitleSize
             )}
           >
-            {tone}
+            {toneDisplay}
           </span>
         </div>
       </div>

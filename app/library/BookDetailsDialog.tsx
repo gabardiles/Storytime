@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Trash2Icon, BookOpenIcon, XIcon } from "lucide-react";
+import { formatTonesForDisplay } from "@/lib/tones";
 
 type Story = {
   id: string;
@@ -48,7 +49,7 @@ function BookContent({
       )}
 
       <div className="flex items-center gap-3 text-xs text-muted-foreground mt-3">
-        <span className="capitalize">{story.tone}</span>
+        <span>{formatTonesForDisplay(story.tone)}</span>
         <span>·</span>
         <span>{story.length_key}</span>
         <span>·</span>
@@ -202,7 +203,7 @@ export default function BookDetailsDialog({
             </DialogHeader>
 
             <div className="flex items-center gap-3 text-xs text-muted-foreground">
-              <span className="capitalize">{story.tone}</span>
+              <span>{formatTonesForDisplay(story.tone)}</span>
               <span>·</span>
               <span>{story.length_key}</span>
               <span>·</span>

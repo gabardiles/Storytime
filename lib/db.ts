@@ -62,6 +62,23 @@ export async function insertParagraphs(paragraphs: ParagraphInsert[]) {
   if (error) throw error;
 }
 
+export async function updateParagraph(
+  chapterId: string,
+  paragraphIndex: number,
+  updates: { imageUrl: string; imagePrompt: string }
+) {
+  const sb = supabaseServer();
+  const { error } = await sb
+    .from("paragraphs")
+    .update({
+      image_url: updates.imageUrl,
+      image_prompt: updates.imagePrompt,
+    })
+    .eq("chapter_id", chapterId)
+    .eq("paragraph_index", paragraphIndex);
+  if (error) throw error;
+}
+
 export async function markChapterDone(chapterId: string) {
   const sb = supabaseServer();
   const { error } = await sb

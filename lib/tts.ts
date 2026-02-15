@@ -14,7 +14,10 @@ export async function generateAudioForParagraph(
     voiceOptionId?: string;
     languageCode?: string;
   }
-): Promise<string> {
+): Promise<string | null> {
+  if (process.env.SKIP_TTS === "true" || process.env.SKIP_TTS === "1") {
+    return null;
+  }
   const apiKey = process.env.ELEVENLABS_API_KEY;
   const voiceId =
     options.voiceId ??

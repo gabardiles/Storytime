@@ -26,12 +26,14 @@ cp .env.example .env.local
 
 Run the SQL in `supabase/schema.sql` in the Supabase SQL Editor.
 
-### 4. Storage bucket
+### 4. Storage buckets
 
 In Supabase Dashboard: Storage > New bucket
 
-- Name: `story-audio`
-- Public: Yes (so audio URLs work)
+- **story-audio** – for TTS audio (Public: Yes)
+- **story-images** – for DALL-E illustrations (Public: Yes)
+
+The app will try to create `story-images` automatically. If image uploads fail, create it manually and run the policies in `supabase/storage-policy.sql`.
 
 ### 5. Auth
 

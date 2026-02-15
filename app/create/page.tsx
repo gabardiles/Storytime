@@ -24,6 +24,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { ChevronDownIcon, ChevronRightIcon } from "lucide-react";
 import { VOICE_OPTIONS } from "@/lib/voices";
 import { LANGUAGE_OPTIONS } from "@/lib/languages";
+import { TONE_OPTIONS, serializeTones } from "@/lib/tones";
 
 const TAGS = [
   "Animals",
@@ -39,7 +40,7 @@ const TAGS = [
 
 export default function CreatePage() {
   const router = useRouter();
-  const [tone, setTone] = useState("cozy");
+  const [tones, setTones] = useState<string[]>(["cozy"]);
   const [lengthKey, setLengthKey] = useState<"micro" | "short" | "medium" | "long">(
     "short"
   );
@@ -49,6 +50,8 @@ export default function CreatePage() {
   const [storyRules, setStoryRules] = useState("");
   const [storyRulesOpen, setStoryRulesOpen] = useState(true);
   const [tags, setTags] = useState<string[]>([]);
+  const [includeImages, setIncludeImages] = useState(true);
+  const [includeVoice, setIncludeVoice] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [debugOpen, setDebugOpen] = useState(false);
@@ -59,6 +62,15 @@ export default function CreatePage() {
     );
   }
 
+  function toggleTone(id: string) {
+    setTones((prev) => {
+      const next = prev.includes(id)
+        ? prev.filter((x) => x !== id)
+        : [...prev, id];
+      return next.length > 0 ? next : ["cozy"];
+    });
+  }
+
   async function onGenerate() {
     setLoading(true);
     setError("");
@@ -67,7 +79,7 @@ export default function CreatePage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          tone,
+          tone: serializeTones(tones),
           lengthKey,
           rulesetId: "default",
           userInput,
@@ -75,6 +87,8 @@ export default function CreatePage() {
           tags,
           voiceId,
           language,
+          includeImages,
+          includeVoice,
         }),
       });
       const json = await res.json();
@@ -139,7 +153,7 @@ export default function CreatePage() {
                 </h3>
                 <pre className="text-xs bg-muted p-3 rounded-lg overflow-x-auto">
                   {JSON.stringify(
-                    { tone, lengthKey, language, voiceId, userInput, storyRules, tags },
+                    { tones, lengthKey, language, voiceId, includeImages, includeVoice, userInput, storyRules, tags },
                     null,
                     2
                   )}
@@ -152,7 +166,7 @@ export default function CreatePage() {
                 <pre className="text-xs bg-muted p-3 rounded-lg overflow-x-auto">
                   {JSON.stringify(
                     buildStorySpec({
-                      tone,
+                      tone: serializeTones(tones),
                       lengthKey,
                       rulesetId: "default",
                       userInput,
@@ -172,7 +186,7 @@ export default function CreatePage() {
                 <pre className="text-xs bg-muted p-3 rounded-lg overflow-x-auto whitespace-pre-wrap">
                   {buildOpenAIPrompt(
                     buildStorySpec({
-                      tone,
+                      tone: serializeTones(tones),
                       lengthKey,
                       rulesetId: "default",
                       userInput,
@@ -194,18 +208,32 @@ export default function CreatePage() {
 
       <div className="space-y-6">
         <div className="space-y-2">
-          <Label htmlFor="tone">Tone</Label>
-          <Select value={tone} onValueChange={setTone}>
-            <SelectTrigger id="tone" className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="cozy">Cozy</SelectItem>
-              <SelectItem value="funny">Funny</SelectItem>
-              <SelectItem value="adventurous">Adventurous</SelectItem>
-              <SelectItem value="calm">Calm</SelectItem>
-            </SelectContent>
-          </Select>
+          <Label>Tone</Label>
+          <p className="text-sm text-muted-foreground">
+            Pick one or more. Combine e.g. Info + Adventure.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {TONE_OPTIONS.map((t) => {
+              const Icon = t.icon;
+              const selected = tones.includes(t.id);
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => toggleTone(t.id)}
+                  className={`flex items-center gap-2 rounded-lg border px-4 py-3 transition-colors ${
+                    selected
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border bg-background hover:bg-accent/50"
+                  }`}
+                  title={t.description}
+                >
+                  <Icon className="size-5" />
+                  <span className="font-medium">{t.name}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         <div className="space-y-2">
@@ -256,6 +284,50 @@ export default function CreatePage() {
               <SelectItem value="long">Long</SelectItem>
             </SelectContent>
           </Select>
+        </div>
+
+        <div className="flex items-center justify-between rounded-lg border px-4 py-3">
+          <Label htmlFor="includeVoice" className="cursor-pointer flex-1">
+            Include voice narration
+          </Label>
+          <button
+            id="includeVoice"
+            type="button"
+            role="switch"
+            aria-checked={includeVoice}
+            onClick={() => setIncludeVoice((prev) => !prev)}
+            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+              includeVoice ? "bg-primary" : "bg-muted"
+            }`}
+          >
+            <span
+              className={`pointer-events-none block h-5 w-5 rounded-full bg-background shadow ring-0 transition-transform ${
+                includeVoice ? "translate-x-5" : "translate-x-0.5"
+              }`}
+            />
+          </button>
+        </div>
+
+        <div className="flex items-center justify-between rounded-lg border px-4 py-3">
+          <Label htmlFor="includeImages" className="cursor-pointer flex-1">
+            Include illustrations
+          </Label>
+          <button
+            id="includeImages"
+            type="button"
+            role="switch"
+            aria-checked={includeImages}
+            onClick={() => setIncludeImages((prev) => !prev)}
+            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+              includeImages ? "bg-primary" : "bg-muted"
+            }`}
+          >
+            <span
+              className={`pointer-events-none block h-5 w-5 rounded-full bg-background shadow ring-0 transition-transform ${
+                includeImages ? "translate-x-5" : "translate-x-0.5"
+              }`}
+            />
+          </button>
         </div>
 
         <div className="space-y-2">

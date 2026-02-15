@@ -1,5 +1,6 @@
 import { loadRuleset, LengthKey, RulesetId } from "./rulesets";
 import { getLanguageOption } from "./languages";
+import { parseTones, hasInformatical } from "./tones";
 
 export type StoryContextInput = {
   userInput: string;
@@ -32,7 +33,13 @@ export function buildStorySpec(input: StoryContextInput): StorySpec {
   const paragraphCount =
     rules.paragraphCountByLength[input.lengthKey] ?? 8;
 
-  const globalStyleHint = `Tone: ${input.tone}. Bedtime-safe, calm pacing, simple language, gentle conflict, soothing ending.`;
+  const toneList = parseTones(input.tone);
+  const toneLabel = toneList.map((t) => t.charAt(0).toUpperCase() + t.slice(1)).join(" + ");
+  let globalStyleHint = `Tone: ${toneLabel}. Bedtime-safe, calm pacing, simple language, gentle conflict, soothing ending.`;
+
+  if (hasInformatical(toneList)) {
+    globalStyleHint += ` INFORMATICAL: Weave in real, accurate facts about the key topic (animals, objects, nature) like a kids' science video. Vary how you share info: "Did you know...?", "In real life, ...", "Here's something cool: ...", "Some [animals] actually...", or naturally describe traits as the story unfolds. Include true details: what they really eat, how they look (colors, scales, fur, size), how they move, where they live, and fun behaviors. Describe real traits—e.g. snakes shed their skin, owls can turn their heads almost all the way around, lizards can regrow tails. Weave facts into the narrative so they feel part of the story, not a lecture. Make it a learning session that stays fun and story-driven.`;
+  }
 
   const instructionsFromFile = input.instructionsFromFile ?? "";
   const language = input.language ?? "en";
