@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { InfoIcon, Trash2Icon } from "lucide-react";
 import { formatTonesForDisplay } from "@/lib/tones";
+import { useLanguage } from "@/lib/LanguageContext";
 
 type Story = {
   id: string;
@@ -24,6 +25,7 @@ export default function StoryCard({
   story: Story;
   onDelete: (id: string) => void;
 }) {
+  const { t, locale } = useLanguage();
   const [debugOpen, setDebugOpen] = useState(false);
   const ctx = story.context_json ?? {};
   const summary = (ctx.summary as string) ?? "";
@@ -43,7 +45,7 @@ export default function StoryCard({
         <CardContent className="flex items-start gap-3 p-4">
           <Link href={`/story/${story.id}`} className="flex-1 min-w-0 block">
             <div className="font-medium">
-              {story.title ?? `Story ${story.id.slice(0, 8)}…`}
+              {story.title ?? `${t("bookDetails.storyFallback")} ${story.id.slice(0, 8)}…`}
             </div>
             {summary && (
               <div className="text-sm text-muted-foreground mt-1 line-clamp-1">
@@ -51,7 +53,7 @@ export default function StoryCard({
               </div>
             )}
             <div className="text-sm text-muted-foreground mt-1">
-              {new Date(story.created_at).toLocaleString()} · {formatTonesForDisplay(story.tone)} ·{" "}
+              {new Date(story.created_at).toLocaleString(locale === "sv" ? "sv-SE" : "en-US")} · {formatTonesForDisplay(story.tone)} ·{" "}
               {story.length_key}
             </div>
           </Link>
@@ -65,7 +67,7 @@ export default function StoryCard({
                 e.stopPropagation();
                 setDebugOpen(true);
               }}
-              aria-label="Debug info"
+              aria-label={t("storyCard.debugInfo")}
             >
               <InfoIcon className="size-4" />
             </Button>
@@ -76,9 +78,9 @@ export default function StoryCard({
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                if (confirm("Delete this story?")) onDelete(story.id);
+                if (confirm(t("storyCard.confirmDelete"))) onDelete(story.id);
               }}
-              aria-label="Delete story"
+              aria-label={t("storyCard.deleteStory")}
               className="text-destructive hover:text-destructive hover:bg-destructive/10"
             >
               <Trash2Icon className="size-4" />
@@ -99,7 +101,7 @@ export default function StoryCard({
           />
           <div className="fixed right-0 top-0 bottom-0 w-full max-w-lg bg-card border-l shadow-xl overflow-hidden flex flex-col z-10">
             <div className="flex items-center justify-between p-4 border-b">
-              <h2 className="font-semibold">Debug info</h2>
+              <h2 className="font-semibold">{t("storyCard.debugInfo")}</h2>
               <Button
                 variant="ghost"
                 size="icon-sm"
@@ -111,7 +113,7 @@ export default function StoryCard({
             <div className="flex-1 overflow-y-auto p-4 space-y-6">
               <section>
                 <h3 className="text-sm font-medium text-muted-foreground mb-2">
-                  Form values (tone, length, words, tags)
+                  {t("storyCard.formValues")}
                 </h3>
                 <pre className="text-xs bg-muted p-3 rounded-lg overflow-x-auto">
                   {JSON.stringify(formValues, null, 2)}
@@ -119,7 +121,7 @@ export default function StoryCard({
               </section>
               <section>
                 <h3 className="text-sm font-medium text-muted-foreground mb-2">
-                  Story spec
+                  {t("storyCard.storySpec")}
                 </h3>
                 <pre className="text-xs bg-muted p-3 rounded-lg overflow-x-auto">
                   {JSON.stringify(storySpec, null, 2)}
@@ -127,20 +129,20 @@ export default function StoryCard({
               </section>
               <section>
                 <h3 className="text-sm font-medium text-muted-foreground mb-2">
-                  OpenAI prompt (chapter 1)
+                  {t("storyCard.openaiPrompt")}
                 </h3>
                 <pre className="text-xs bg-muted p-3 rounded-lg overflow-x-auto whitespace-pre-wrap">
-                  {initialPrompt || "(No prompt stored)"}
+                  {initialPrompt || t("storyCard.noPrompt")}
                 </pre>
               </section>
               <section>
                 <h3 className="text-sm font-medium text-muted-foreground mb-2">
-                  OpenAI response (paragraphs)
+                  {t("storyCard.openaiResponse")}
                 </h3>
                 <pre className="text-xs bg-muted p-3 rounded-lg overflow-x-auto whitespace-pre-wrap">
                   {openaiResponse.length > 0
                     ? JSON.stringify(openaiResponse, null, 2)
-                    : "(No response stored)"}
+                    : t("storyCard.noResponse")}
                 </pre>
               </section>
             </div>

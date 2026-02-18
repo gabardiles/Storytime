@@ -7,8 +7,10 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useLanguage, LanguageToggle } from "@/lib/LanguageContext";
 
 function LoginForm() {
+  const { t } = useLanguage();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -29,7 +31,7 @@ function LoginForm() {
       if (isSignUp) {
         const { error } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
-        setMessage("Check your email for the confirmation link.");
+        setMessage(t("login.checkEmail"));
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email,
@@ -40,7 +42,7 @@ function LoginForm() {
         router.refresh();
       }
     } catch (err: unknown) {
-      setMessage(err instanceof Error ? err.message : "Something went wrong");
+      setMessage(err instanceof Error ? err.message : t("login.genericError"));
     } finally {
       setLoading(false);
     }
@@ -48,20 +50,24 @@ function LoginForm() {
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-8">
+      <div className="absolute top-4 right-4">
+        <LanguageToggle />
+      </div>
+
       <div className="w-full max-w-md space-y-6">
         <h1 className="text-2xl font-bold text-center">
-          {isSignUp ? "Create account" : "Sign in"}
+          {isSignUp ? t("login.title.signUp") : t("login.title.signIn")}
         </h1>
 
         {error === "auth" && (
           <p className="text-sm text-destructive text-center">
-            Authentication failed. Please try again.
+            {t("login.authFailed")}
           </p>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{t("login.email")}</Label>
             <Input
               id="email"
               type="email"
@@ -71,7 +77,7 @@ function LoginForm() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password">{t("login.password")}</Label>
             <Input
               id="password"
               type="password"
@@ -84,7 +90,11 @@ function LoginForm() {
             <p className="text-sm text-muted-foreground">{message}</p>
           )}
           <Button type="submit" disabled={loading} className="w-full">
-            {loading ? "Please wait…" : isSignUp ? "Sign up" : "Sign in"}
+            {loading
+              ? t("login.pleaseWait")
+              : isSignUp
+                ? t("login.signUp")
+                : t("login.signIn")}
           </Button>
         </form>
 
@@ -95,8 +105,8 @@ function LoginForm() {
           onClick={() => setIsSignUp(!isSignUp)}
         >
           {isSignUp
-            ? "Already have an account? Sign in"
-            : "Need an account? Sign up"}
+            ? t("login.switchToSignIn")
+            : t("login.switchToSignUp")}
         </Button>
 
         <p className="text-center">
@@ -104,7 +114,7 @@ function LoginForm() {
             href="/"
             className="text-sm text-muted-foreground hover:text-foreground hover:underline transition-colors"
           >
-            ← Back home
+            {t("login.backHome")}
           </Link>
         </p>
       </div>
@@ -113,11 +123,12 @@ function LoginForm() {
 }
 
 export default function LoginPage() {
+  const { t } = useLanguage();
   return (
     <Suspense
       fallback={
         <main className="flex min-h-screen items-center justify-center">
-          <p className="text-muted-foreground">Loading…</p>
+          <p className="text-muted-foreground">{t("login.loading")}</p>
         </main>
       }
     >

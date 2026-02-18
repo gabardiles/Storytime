@@ -151,6 +151,32 @@ export async function getStoryFull(storyId: string) {
   return data;
 }
 
+export async function getUserPreferences(userId: string) {
+  const sb = supabaseServer();
+  const { data } = await sb
+    .from("user_preferences")
+    .select("ui_language")
+    .eq("user_id", userId)
+    .single();
+  return data as { ui_language: string } | null;
+}
+
+export async function upsertUserPreferences(
+  userId: string,
+  prefs: { ui_language: string }
+) {
+  const sb = supabaseServer();
+  const { error } = await sb.from("user_preferences").upsert(
+    {
+      user_id: userId,
+      ui_language: prefs.ui_language,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id" }
+  );
+  if (error) throw error;
+}
+
 export async function getStoryByIdAndUser(storyId: string, userId: string) {
   const sb = supabaseServer();
   const { data, error } = await sb

@@ -10,21 +10,21 @@ import {
 import { Button } from "@/components/ui/button";
 import { Trash2Icon, BookOpenIcon, XIcon } from "lucide-react";
 import { formatTonesForDisplay } from "@/lib/tones";
+import { useLanguage } from "@/lib/LanguageContext";
 
-/* ── Same cover palettes as BookCover for consistent look ── */
 const COVER_PALETTES: { bg: string }[] = [
-  { bg: "#2B3A67" }, // deep navy
-  { bg: "#D35F49" }, // warm red
-  { bg: "#5B8C5A" }, // forest green
-  { bg: "#E8AA42" }, // golden yellow
-  { bg: "#7B68AE" }, // soft purple
-  { bg: "#E07A52" }, // coral orange
-  { bg: "#4A90A4" }, // teal
-  { bg: "#C4A882" }, // warm beige
-  { bg: "#2D4A3E" }, // dark sage
-  { bg: "#8B5E83" }, // dusty plum
-  { bg: "#D4836B" }, // peachy
-  { bg: "#3B6B8A" }, // ocean blue
+  { bg: "#2B3A67" },
+  { bg: "#D35F49" },
+  { bg: "#5B8C5A" },
+  { bg: "#E8AA42" },
+  { bg: "#7B68AE" },
+  { bg: "#E07A52" },
+  { bg: "#4A90A4" },
+  { bg: "#C4A882" },
+  { bg: "#2D4A3E" },
+  { bg: "#8B5E83" },
+  { bg: "#D4836B" },
+  { bg: "#3B6B8A" },
 ];
 
 function hashStr(str: string): number {
@@ -46,7 +46,6 @@ type Story = {
   context_json: Record<string, unknown> | null;
 };
 
-/* ── Shared content used by both drawer and dialog ── */
 function BookContent({
   story,
   onStartReading,
@@ -58,9 +57,10 @@ function BookContent({
   onDelete: () => void;
   hasImageBackground?: boolean;
 }) {
+  const { t, locale } = useLanguage();
   const ctx = story.context_json ?? {};
   const summary = (ctx.summary as string) ?? "";
-  const title = story.title ?? `Story ${story.id.slice(0, 8)}`;
+  const title = story.title ?? `${t("bookDetails.storyFallback")} ${story.id.slice(0, 8)}`;
 
   const textClasses = hasImageBackground
     ? "text-white [&_*]:text-white/90"
@@ -91,7 +91,7 @@ function BookContent({
         <span>·</span>
         <span>{story.length_key}</span>
         <span>·</span>
-        <span>{new Date(story.created_at).toLocaleDateString()}</span>
+        <span>{new Date(story.created_at).toLocaleDateString(locale === "sv" ? "sv-SE" : "en-US")}</span>
       </div>
 
       <div className="flex items-center justify-between gap-2 mt-6">
@@ -107,7 +107,7 @@ function BookContent({
           }
         >
           <Trash2Icon className="mr-1.5 size-3.5" />
-          Delete
+          {t("bookDetails.delete")}
         </Button>
         <Button
           type="button"
@@ -116,14 +116,13 @@ function BookContent({
           className={hasImageBackground ? "bg-white text-black hover:bg-white/90" : ""}
         >
           <BookOpenIcon className="mr-1.5 size-3.5" />
-          Start reading
+          {t("bookDetails.startReading")}
         </Button>
       </div>
     </>
   );
 }
 
-/* ── Mobile side drawer ── */
 function MobileDrawer({
   story,
   open,
@@ -137,11 +136,11 @@ function MobileDrawer({
   onStartReading: () => void;
   onDelete: () => void;
 }) {
+  const { t } = useLanguage();
   const coverImageUrl = story.context_json?.coverImageUrl as string | undefined;
   const hasImage = !!coverImageUrl;
   const palette = COVER_PALETTES[hashStr(story.id) % COVER_PALETTES.length];
 
-  /* Lock body scroll when drawer is open */
   useEffect(() => {
     if (open) {
       document.body.style.overflow = "hidden";
@@ -155,7 +154,6 @@ function MobileDrawer({
 
   return (
     <>
-      {/* Backdrop */}
       <div
         className={`fixed inset-0 z-50 bg-black/80 backdrop-blur-sm transition-opacity duration-300 ${
           open ? "opacity-100" : "pointer-events-none opacity-0"
@@ -164,7 +162,6 @@ function MobileDrawer({
         aria-hidden
       />
 
-      {/* Drawer panel – slides in from right */}
       <div
         className={`fixed right-0 top-0 bottom-0 z-50 w-[85vw] max-w-sm border-l shadow-2xl transition-transform duration-300 ease-out overflow-hidden ${
           open ? "translate-x-0" : "translate-x-full"
@@ -194,7 +191,7 @@ function MobileDrawer({
             type="button"
             onClick={onClose}
             className="absolute top-4 right-4 z-10 rounded-sm p-1 text-white/90 hover:text-white transition-opacity focus:outline-none focus:ring-2 focus:ring-white/50"
-            aria-label="Close"
+            aria-label={t("bookDetails.close")}
           >
             <XIcon className="size-5" />
           </button>
@@ -212,7 +209,6 @@ function MobileDrawer({
   );
 }
 
-/* ── Main export ── */
 export default function BookDetailsDialog({
   story,
   open,
@@ -225,10 +221,11 @@ export default function BookDetailsDialog({
   onDelete: (id: string) => void;
 }) {
   const router = useRouter();
+  const { t } = useLanguage();
 
   if (!story) return null;
 
-  const title = story.title ?? `Story ${story.id.slice(0, 8)}`;
+  const title = story.title ?? `${t("bookDetails.storyFallback")} ${story.id.slice(0, 8)}`;
 
   function handleStartReading() {
     onOpenChange(false);
@@ -236,7 +233,7 @@ export default function BookDetailsDialog({
   }
 
   function handleDelete() {
-    if (confirm("Delete this story?")) {
+    if (confirm(t("bookDetails.confirmDelete"))) {
       onDelete(story!.id);
       onOpenChange(false);
     }
@@ -244,7 +241,6 @@ export default function BookDetailsDialog({
 
   return (
     <>
-      {/* Mobile: side drawer */}
       <div className="sm:hidden">
         <MobileDrawer
           story={story}
@@ -255,7 +251,6 @@ export default function BookDetailsDialog({
         />
       </div>
 
-      {/* Desktop: centered dialog */}
       <div className="hidden sm:block">
         <Dialog open={open} onOpenChange={onOpenChange}>
           {(() => {

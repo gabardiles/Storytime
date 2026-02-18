@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { buildStorySpec, buildOpenAIPrompt } from "@/lib/storySpec";
@@ -26,27 +26,39 @@ import {
   type VoiceTier,
 } from "@/lib/voices";
 import { LANGUAGE_OPTIONS } from "@/lib/languages";
-import { TONE_OPTIONS, serializeTones } from "@/lib/tones";
-import { getAvailableTags } from "@/lib/tags";
+import { TONE_OPTIONS } from "@/lib/tones";
+import { serializeTones } from "@/lib/tones";
+import { getTagsForUI } from "@/lib/tags";
+import { useLanguage, LanguageToggle } from "@/lib/LanguageContext";
 
-const LENGTH_OPTIONS: { key: "micro" | "short" | "medium" | "long"; label: string; minutes: number }[] = [
-  { key: "micro", label: "Quick", minutes: 1 },
-  { key: "short", label: "Short", minutes: 2 },
-  { key: "medium", label: "Medium", minutes: 4 },
-  { key: "long", label: "Long", minutes: 6 },
-];
+const LENGTH_KEYS = ["micro", "short", "medium", "long"] as const;
 
-const TAGS = getAvailableTags();
+const TAGS = getTagsForUI();
 
 export default function CreatePage() {
   const router = useRouter();
+  const { locale, t } = useLanguage();
+
+  const LENGTH_OPTIONS: { key: typeof LENGTH_KEYS[number]; label: string; minutes: number }[] = [
+    { key: "micro", label: t("create.length.micro"), minutes: 1 },
+    { key: "short", label: t("create.length.short"), minutes: 2 },
+    { key: "medium", label: t("create.length.medium"), minutes: 4 },
+    { key: "long", label: t("create.length.long"), minutes: 6 },
+  ];
+
   const [tones, setTones] = useState<string[]>(["cozy"]);
   const [lengthKey, setLengthKey] = useState<"micro" | "short" | "medium" | "long">(
     "medium"
   );
   const [voiceTier, setVoiceTier] = useState<VoiceTier>("standard");
   const [voiceId, setVoiceId] = useState<string>("walter");
-  const [language, setLanguage] = useState<string>("en");
+  const [language, setLanguage] = useState<string>(locale);
+  const [languageManuallySet, setLanguageManuallySet] = useState(false);
+
+  useEffect(() => {
+    if (!languageManuallySet) setLanguage(locale);
+  }, [locale, languageManuallySet]);
+
   const [userInput, setUserInput] = useState("");
   const [storyRules, setStoryRules] = useState("");
   const [tags, setTags] = useState<string[]>([]);
@@ -60,9 +72,9 @@ export default function CreatePage() {
   const [previewError, setPreviewError] = useState("");
   const [factsOnly, setFactsOnly] = useState(false);
 
-  function toggleTag(t: string) {
+  function toggleTag(id: string) {
     setTags((prev) =>
-      prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
     );
   }
 
@@ -75,10 +87,10 @@ export default function CreatePage() {
       const res = await fetch(url);
       if (!res.ok) {
         if (res.status === 503) {
-          setPreviewError("Voice preview is not available.");
+          setPreviewError(t("create.previewUnavailable"));
         } else {
           const json = await res.json().catch(() => ({}));
-          setPreviewError((json?.error as string) || `Preview failed (${res.status}).`);
+          setPreviewError((json?.error as string) || `${t("create.previewFailed")} (${res.status}).`);
         }
         return;
       }
@@ -92,7 +104,7 @@ export default function CreatePage() {
       setPreviewPlaying(true);
       await audio.play();
     } catch (e) {
-      setPreviewError(e instanceof Error ? e.message : "Preview failed.");
+      setPreviewError(e instanceof Error ? e.message : `${t("create.previewFailed")}.`);
     } finally {
       setPreviewLoading(false);
     }
@@ -142,11 +154,11 @@ export default function CreatePage() {
           router.push("/login");
           return;
         }
-        throw new Error(json?.error || "Failed");
+        throw new Error(json?.error || t("create.failedGenerate"));
       }
       router.push(`/story/${json.storyId}`);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to generate story");
+      setError(e instanceof Error ? e.message : t("create.failedGenerate"));
     } finally {
       setLoading(false);
     }
@@ -162,7 +174,7 @@ export default function CreatePage() {
         >
           <div className="flex flex-col items-center gap-4 rounded-xl border bg-background px-8 py-6 shadow-lg">
             <Hourglass className="size-10 animate-pulse text-primary" />
-            <p className="text-lg font-medium">Creating your story...</p>
+            <p className="text-lg font-medium">{t("create.creating")}</p>
           </div>
         </div>
       )}
@@ -171,14 +183,17 @@ export default function CreatePage() {
           href="/library"
           className="text-muted-foreground hover:text-foreground transition-colors"
         >
-          ← Library
+          {t("create.backLibrary")}
         </Link>
+        <div className="ml-auto">
+          <LanguageToggle />
+        </div>
       </nav>
 
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Create story</h1>
+        <h1 className="text-2xl font-bold">{t("create.title")}</h1>
         <Button variant="outline" size="sm" onClick={() => setDebugOpen(true)}>
-          Debug
+          {t("create.debug")}
         </Button>
       </div>
 
@@ -194,7 +209,7 @@ export default function CreatePage() {
           />
           <div className="fixed right-0 top-0 bottom-0 w-full max-w-lg bg-card border-l shadow-xl overflow-hidden flex flex-col z-10">
             <div className="flex items-center justify-between p-4 border-b">
-              <h2 className="font-semibold">POC Debug</h2>
+              <h2 className="font-semibold">{t("create.pocDebug")}</h2>
               <Button
                 variant="ghost"
                 size="icon-sm"
@@ -206,7 +221,7 @@ export default function CreatePage() {
             <div className="flex-1 overflow-y-auto p-4 space-y-6">
               <section>
                 <h3 className="text-sm font-medium text-muted-foreground mb-2">
-                  Form values (tone, length, words, tags)
+                  {t("create.formValues")}
                 </h3>
                 <pre className="text-xs bg-muted p-3 rounded-lg overflow-x-auto">
                   {JSON.stringify(
@@ -232,7 +247,7 @@ export default function CreatePage() {
               </section>
               <section>
                 <h3 className="text-sm font-medium text-muted-foreground mb-2">
-                  Story spec (built from form)
+                  {t("create.storySpec")}
                 </h3>
                 <pre className="text-xs bg-muted p-3 rounded-lg overflow-x-auto">
                   {JSON.stringify(
@@ -253,7 +268,7 @@ export default function CreatePage() {
               </section>
               <section>
                 <h3 className="text-sm font-medium text-muted-foreground mb-2">
-                  OpenAI prompt (chapter 1)
+                  {t("create.openaiPrompt")}
                 </h3>
                 <pre className="text-xs bg-muted p-3 rounded-lg overflow-x-auto whitespace-pre-wrap">
                   {buildOpenAIPrompt(
@@ -272,7 +287,7 @@ export default function CreatePage() {
                 </pre>
               </section>
               <p className="text-xs text-muted-foreground">
-                OpenAI response appears in library after generating.
+                {t("create.openaiNote")}
               </p>
             </div>
           </div>
@@ -280,27 +295,26 @@ export default function CreatePage() {
       )}
 
       <div className="space-y-6">
-        {/* Tone – big, fills container */}
         <div className="space-y-2">
-          <Label>Tone</Label>
+          <Label>{t("create.tone")}</Label>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {TONE_OPTIONS.map((t) => {
-              const Icon = t.icon;
-              const selected = tones.includes(t.id);
+            {TONE_OPTIONS.map((tone) => {
+              const Icon = tone.icon;
+              const selected = tones.includes(tone.id);
               return (
                 <button
-                  key={t.id}
+                  key={tone.id}
                   type="button"
-                  onClick={() => toggleTone(t.id)}
+                  onClick={() => toggleTone(tone.id)}
                   className={`flex flex-col items-center justify-center gap-2 rounded-xl border min-h-[88px] sm:min-h-[96px] transition-colors ${
                     selected
                       ? "border-primary bg-[linear-gradient(to_bottom_right,var(--primary-light),var(--primary-dark))] text-primary-foreground"
                       : "border-border bg-background hover:bg-accent/50"
                   }`}
-                  title={t.description}
+                  title={t(`tone.${tone.id}.desc`)}
                 >
                   <Icon className="size-7 sm:size-8" strokeWidth={1} />
-                  <span className="font-medium text-sm sm:text-base">{t.name}</span>
+                  <span className="font-medium text-sm sm:text-base">{t(`tone.${tone.id}`)}</span>
                 </button>
               );
             })}
@@ -323,7 +337,7 @@ export default function CreatePage() {
                   : "border-border bg-background hover:bg-accent/50"
               }`}
               aria-pressed={factsOnly}
-              aria-label="Facts only: collect facts about the topics instead of a story"
+              aria-label={t("create.factsOnlyDesc")}
             >
               <div className="relative">
                 <FlaskConical
@@ -336,23 +350,23 @@ export default function CreatePage() {
                   </span>
                 )}
               </div>
-              <span className="font-medium text-base">Facts only?</span>
+              <span className="font-medium text-base">{t("create.factsOnly")}</span>
               <span className="text-xs opacity-90 text-center">
-                Collect facts instead of a story
+                {t("create.factsOnlyDesc")}
               </span>
             </button>
           </div>
         )}
 
         <div className="space-y-2">
-          <Label htmlFor="userInput">Words or ideas for your story</Label>
+          <Label htmlFor="userInput">{t("create.wordsLabel")}</Label>
           <div className="rounded-lg border-2 border-primary-muted bg-transparent">
             <Textarea
               id="userInput"
               value={userInput}
               onChange={(e) => setUserInput(e.target.value)}
               rows={4}
-              placeholder="e.g. a little rabbit, a magical forest, a friendly owl..."
+              placeholder={t("create.wordsPlaceholder")}
               className="border-0 shadow-none focus-visible:ring-primary-muted/50"
             />
           </div>
@@ -360,22 +374,23 @@ export default function CreatePage() {
 
         {!factsOnly && (
           <div className="space-y-2">
-            <Label>Tags</Label>
+            <Label>{t("create.tags")}</Label>
             <div className="flex flex-wrap gap-2">
-              {TAGS.map((t) => {
-                const selected = tags.includes(t);
+              {TAGS.map((tag) => {
+                const selected = tags.includes(tag.id);
+                const label = locale === "sv" ? tag.nameSv : tag.name;
                 return (
                   <button
-                    key={t}
+                    key={tag.id}
                     type="button"
-                    onClick={() => toggleTag(t)}
+                    onClick={() => toggleTag(tag.id)}
                     className={`rounded-full border-2 px-3 py-1.5 text-sm font-medium transition-colors ${
                       selected
                         ? "border-primary bg-primary text-primary-foreground hover:bg-primary/90"
                         : "border-border bg-background hover:bg-accent/50"
                     }`}
                   >
-                    {t}
+                    {label}
                   </button>
                 );
               })}
@@ -383,25 +398,23 @@ export default function CreatePage() {
           </div>
         )}
 
-        {/* Extra options – accordion (adult settings, extra space to avoid accidental clicks) */}
         <div className="mt-10">
           <Accordion type="single" collapsible className="rounded-lg border">
             <AccordionItem value="extra" className="border-none">
               <AccordionTrigger className="flex w-full items-center justify-between px-4 py-3 hover:no-underline [&[data-state=open]_.icon-plus]:hidden [&[data-state=open]_.icon-minus]:block">
-                <span className="text-sm font-medium">Extra options</span>
+                <span className="text-sm font-medium">{t("create.extraOptions")}</span>
                 <Plus className="icon-plus size-4 text-muted-foreground shrink-0" />
                 <Minus className="icon-minus hidden size-4 text-muted-foreground shrink-0" />
               </AccordionTrigger>
             <AccordionContent className="px-4 pb-4 pt-1 space-y-4">
-              {/* Language – flag buttons */}
               <div className="space-y-2">
-                <Label>Language</Label>
+                <Label>{t("create.language")}</Label>
                 <div className="flex gap-2">
                   {LANGUAGE_OPTIONS.map((l) => (
                     <button
                       key={l.id}
                       type="button"
-                      onClick={() => setLanguage(l.id)}
+                      onClick={() => { setLanguage(l.id); setLanguageManuallySet(true); }}
                       className={`flex items-center justify-center w-12 h-12 rounded-lg border text-2xl transition-colors ${
                         language === l.id
                           ? "border-primary bg-primary/10 ring-2 ring-primary"
@@ -416,10 +429,9 @@ export default function CreatePage() {
                 </div>
               </div>
 
-              {/* Voice quality + Narrator – same row */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="voiceTier">Voice quality</Label>
+                  <Label htmlFor="voiceTier">{t("create.voiceQuality")}</Label>
                   <Select
                     value={voiceTier}
                     onValueChange={(v) => {
@@ -433,14 +445,14 @@ export default function CreatePage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="standard">Standard</SelectItem>
-                      <SelectItem value="premium">Premium</SelectItem>
-                      <SelectItem value="premium-plus">Premium+</SelectItem>
+                      <SelectItem value="standard">{t("create.voiceTier.standard")}</SelectItem>
+                      <SelectItem value="premium">{t("create.voiceTier.premium")}</SelectItem>
+                      <SelectItem value="premium-plus">{t("create.voiceTier.premiumPlus")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="voice">Narrator</Label>
+                  <Label htmlFor="voice">{t("create.narrator")}</Label>
                   <div className="flex gap-2">
                     <Select value={voiceId} onValueChange={setVoiceId}>
                       <SelectTrigger id="voice" className="flex-1">
@@ -460,8 +472,8 @@ export default function CreatePage() {
                       size="icon"
                       onClick={playPreview}
                       disabled={previewLoading || previewPlaying || !includeVoice}
-                      title="Preview voice"
-                      aria-label="Preview voice"
+                      title={t("create.previewVoice")}
+                      aria-label={t("create.previewVoice")}
                     >
                       {previewLoading ? (
                         <Loader2 className="size-4 animate-spin" />
@@ -476,9 +488,8 @@ export default function CreatePage() {
                 </div>
               </div>
 
-              {/* Length – with minutes */}
               <div className="space-y-2">
-                <Label htmlFor="length">Length</Label>
+                <Label htmlFor="length">{t("create.length")}</Label>
                 <Select
                   value={lengthKey}
                   onValueChange={(v) => setLengthKey(v as "micro" | "short" | "medium" | "long")}
@@ -496,9 +507,8 @@ export default function CreatePage() {
                 </Select>
               </div>
 
-              {/* Include voice + images – icon toggles */}
               <div className="space-y-2">
-                <Label>Include</Label>
+                <Label>{t("create.include")}</Label>
                 <div className="flex gap-2">
                   <button
                     type="button"
@@ -508,8 +518,8 @@ export default function CreatePage() {
                         ? "border-primary bg-primary text-primary-foreground"
                         : "border-border bg-muted/50 hover:bg-muted"
                     }`}
-                    title="Voice narration"
-                    aria-label="Toggle voice narration"
+                    title={t("create.voiceNarration")}
+                    aria-label={t("create.toggleVoice")}
                     aria-pressed={includeVoice}
                   >
                     <Volume2 className="size-6" />
@@ -522,8 +532,8 @@ export default function CreatePage() {
                         ? "border-primary bg-primary text-primary-foreground"
                         : "border-border bg-muted/50 hover:bg-muted"
                     }`}
-                    title="Illustrations"
-                    aria-label="Toggle illustrations"
+                    title={t("create.illustrations")}
+                    aria-label={t("create.toggleIllustrations")}
                     aria-pressed={includeImages}
                   >
                     <ImageIcon className="size-6" />
@@ -531,15 +541,14 @@ export default function CreatePage() {
                 </div>
               </div>
 
-              {/* Story rules */}
               <div className="space-y-2">
-                <Label htmlFor="storyRules">Story rules</Label>
+                <Label htmlFor="storyRules">{t("create.storyRules")}</Label>
                 <Textarea
                   id="storyRules"
                   value={storyRules}
                   onChange={(e) => setStoryRules(e.target.value)}
                   rows={3}
-                  placeholder="e.g. It's Halloween themed. Santa is always the bad guy..."
+                  placeholder={t("create.storyRulesPlaceholder")}
                   className="min-h-20"
                 />
               </div>
@@ -560,7 +569,7 @@ export default function CreatePage() {
         >
           <span className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,var(--primary-light),var(--primary),var(--primary-dark),var(--primary))] bg-[length:200%_100%] opacity-0 transition-opacity group-hover:opacity-100 group-hover:animate-[gradient-roll_1.5s_linear_infinite] group-disabled:opacity-0" />
           <WandSparkles className="size-5 shrink-0 group-hover:animate-[wiggle_0.5s_ease-in-out_infinite] group-disabled:animate-none" strokeWidth={1} />
-          {loading ? "Generating your story…" : "Generate"}
+          {loading ? t("create.generating") : t("create.generate")}
         </Button>
       </div>
     </main>

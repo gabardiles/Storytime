@@ -2,6 +2,7 @@ import { createRouteHandlerClient } from "@/lib/supabase-route-handler";
 import { supabaseServer } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
 import StoryList from "./StoryList";
+import LibraryHeader, { LibraryFooter } from "./LibraryHeader";
 
 export default async function LibraryPage() {
   let user: { id: string; email?: string } | null = null;
@@ -27,23 +28,9 @@ export default async function LibraryPage() {
 
   return (
     <main className="min-h-screen p-4 md:p-8 max-w-3xl mx-auto flex flex-col">
-      <nav className="mb-8">
-        <h1 className="text-2xl font-bold">Library</h1>
-      </nav>
-
+      <LibraryHeader />
       <StoryList stories={stories ?? []} />
-
-      <footer className="mt-auto pt-8 flex flex-col items-center gap-2 text-center">
-        {user.email && (
-          <p className="text-sm text-muted-foreground">{user.email}</p>
-        )}
-        <a
-          href="/api/auth/signout"
-          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          Sign out
-        </a>
-      </footer>
+      <LibraryFooter email={user.email} />
     </main>
   );
 }

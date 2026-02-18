@@ -6,6 +6,7 @@ import { PlusIcon } from "lucide-react";
 import BookCover from "./BookCover";
 import DecorativeObject from "./DecorativeObject";
 import BookDetailsDialog from "./BookDetailsDialog";
+import { useLanguage } from "@/lib/LanguageContext";
 
 type Story = {
   id: string;
@@ -150,6 +151,7 @@ function ShelfRow({
   items: ShelfItem[];
   onBookClick: (s: Story) => void;
 }) {
+  const { t } = useLanguage();
   return (
     <div className="relative pb-3 sm:pb-4">
       {/* Books area */}
@@ -184,13 +186,12 @@ function ShelfRow({
               </div>
             );
           }
-          /* "+ new" slot – designed like other books, always has space on sides */
           return (
             <Link
               key="new-story"
               href="/create"
               className="group relative flex-shrink-0 cursor-pointer transition-transform duration-200 hover:-translate-y-1 hover:scale-[1.03] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background ml-1 mr-2 sm:ml-3 sm:mr-4 w-[78px] h-[108px] sm:w-[118px] sm:h-[165px]"
-              aria-label="Create new story"
+              aria-label={t("library.createNewStory")}
             >
               {/* Spine – left binding edge, always visible */}
               <div
@@ -233,7 +234,7 @@ function ShelfRow({
                   className="font-extrabold text-base leading-tight text-neutral-600 group-hover:text-primary transition-colors"
                   style={{ fontFamily: "var(--font-book-1)" }}
                 >
-                  New story
+                  {t("library.newStory")}
                 </span>
                 <div className="flex-1 flex items-center justify-center">
                   <PlusIcon className="size-7 text-neutral-400 transition-colors group-hover:text-primary sm:size-8" />

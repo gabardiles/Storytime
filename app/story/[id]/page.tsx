@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { formatTonesForDisplay } from "@/lib/tones";
 import { ImageLightbox } from "@/components/ImageLightbox";
 import { ImageIcon, Play, Pause, Loader2 } from "lucide-react";
+import { useLanguage, LanguageToggle } from "@/lib/LanguageContext";
 
 function getImageCountForChapter(_lengthKey: string): number {
   return 2;
@@ -54,6 +55,7 @@ export default function StoryPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const { t } = useLanguage();
   const [story, setStory] = useState<Story | null>(null);
   const [loading, setLoading] = useState(true);
   const [continuing, setContinuing] = useState(false);
@@ -113,7 +115,7 @@ export default function StoryPage({
       });
       const json = await res.json();
       if (!res.ok) {
-        setContinueError(json?.error || "Failed to generate next chapter");
+        setContinueError(json?.error || t("create.failedGenerate"));
         return;
       }
       await fetchStory();
@@ -122,7 +124,6 @@ export default function StoryPage({
     }
   }
 
-  /** Get the next paragraph with audio, or null if none */
   function getNextParagraph(currentId: string): Paragraph | null {
     const list = (story?.chapters ?? []).flatMap((ch) => ch.paragraphs ?? []);
     const idx = list.findIndex((p) => p.id === currentId);
@@ -173,7 +174,7 @@ export default function StoryPage({
   if (loading) {
     return (
       <main className="min-h-screen p-6 md:p-8 max-w-2xl mx-auto">
-        <p className="text-muted-foreground">Loading…</p>
+        <p className="text-muted-foreground">{t("story.loading")}</p>
       </main>
     );
   }
@@ -181,9 +182,9 @@ export default function StoryPage({
   if (!story) {
     return (
       <main className="min-h-screen p-6 md:p-8 max-w-2xl mx-auto">
-        <p className="text-muted-foreground">Story not found.</p>
+        <p className="text-muted-foreground">{t("story.notFound")}</p>
         <Link href="/library" className="mt-4 text-muted-foreground hover:text-foreground hover:underline transition-colors">
-          ← Library
+          {t("story.backLibrary")}
         </Link>
       </main>
     );
@@ -191,31 +192,34 @@ export default function StoryPage({
 
   const firstPara = story.chapters?.[0]?.paragraphs?.[0]?.text;
   const displayTitle =
-    story.title || (firstPara ? (firstPara.length > 50 ? `${firstPara.slice(0, 50)}…` : firstPara) : "Story");
+    story.title || (firstPara ? (firstPara.length > 50 ? `${firstPara.slice(0, 50)}…` : firstPara) : t("story.fallbackTitle"));
 
   return (
     <main className="min-h-screen p-6 md:p-8 max-w-2xl mx-auto">
       <nav className="flex items-center gap-4 mb-8">
         <Link href="/library" className="text-muted-foreground hover:text-foreground transition-colors">
-          ← Library
+          {t("story.backLibrary")}
         </Link>
         <Link href="/create" className="text-muted-foreground hover:text-foreground transition-colors">
-          Create new
+          {t("story.createNew")}
         </Link>
+        <div className="ml-auto">
+          <LanguageToggle />
+        </div>
       </nav>
 
       <h1 className="text-2xl font-bold mb-2">{displayTitle}</h1>
       <p className="text-muted-foreground text-sm mb-8">
-        Tone: {formatTonesForDisplay(story.tone)} · Length: {story.length_key}
+        {t("story.toneLabel")} {formatTonesForDisplay(story.tone)} · {t("story.lengthLabel")} {story.length_key}
         {(story.context_json as { voiceError?: string })?.voiceError && (
           <span className="ml-2 inline-block text-amber-600 dark:text-amber-400">
-            (Voice failed—check /api/debug/tts-config)
+            {t("story.voiceFailed")}
           </span>
         )}
         {story.status === "generating" && (
           <span className="ml-2 inline-flex items-center gap-1">
             <Loader2 className="size-3.5 animate-spin" />
-            Adding voice and images…
+            {t("story.addingMedia")}
           </span>
         )}
       </p>
@@ -225,7 +229,7 @@ export default function StoryPage({
           <Card key={ch.id}>
             <CardContent className="p-6">
             <h2 className="text-lg font-semibold mb-4">
-              Chapter {ch.chapter_index}
+              {t("story.chapter")} {ch.chapter_index}
             </h2>
             <div className="space-y-4">
               {(ch.paragraphs ?? []).map((p, paraIdx) => {
@@ -247,7 +251,7 @@ export default function StoryPage({
                         type="button"
                         onClick={() => setLightboxImage(imageUrl)}
                         className="block w-full rounded-lg overflow-hidden focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                        aria-label="View full size"
+                        aria-label={t("story.viewFullSize")}
                       >
                         <img
                           src={imageUrl}
@@ -276,7 +280,7 @@ export default function StoryPage({
                       size="icon"
                       onClick={() => handlePlay(p)}
                       className="flex-shrink-0 rounded-full"
-                      aria-label={playingId === p.id ? "Pause" : "Play"}
+                      aria-label={playingId === p.id ? t("story.pause") : t("story.play")}
                     >
                       {playingId === p.id ? <Pause className="size-5" /> : <Play className="size-5" />}
                     </Button>
@@ -328,7 +332,7 @@ export default function StoryPage({
           onClick={onContinue}
           disabled={continuing}
         >
-          {continuing ? "Generating next chapter…" : "Next part"}
+          {continuing ? t("story.generatingNext") : t("story.nextPart")}
         </Button>
       </div>
     </main>
