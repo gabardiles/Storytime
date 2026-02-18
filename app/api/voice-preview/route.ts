@@ -26,7 +26,7 @@ export async function GET(req: Request) {
       | "premium-plus";
     const language = searchParams.get("language") ?? "en";
 
-    const previewText = getPreviewText(voiceId, voiceTier);
+    const previewText = getPreviewText(voiceId, voiceTier, language);
     const buffer = await synthesizeToBuffer(previewText, {
       voiceOptionId: voiceId,
       voiceTier,

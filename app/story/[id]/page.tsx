@@ -8,9 +8,11 @@ import { formatTonesForDisplay } from "@/lib/tones";
 import { ImageLightbox } from "@/components/ImageLightbox";
 import { ImageIcon, Play, Pause, Loader2 } from "lucide-react";
 import { useLanguage, LanguageToggle } from "@/lib/LanguageContext";
+import { useCoins, CoinBalance, GoldCoinIcon } from "@/lib/CoinContext";
+import { calculateChapterCost } from "@/lib/coinPricing";
 
-function getImageCountForChapter(_lengthKey: string): number {
-  return 2;
+function getImageCountForChapter(_lengthKey: string, chapterIndex: number): number {
+  return chapterIndex === 1 ? 1 : 0;
 }
 
 function getParagraphIndicesForImages(paragraphCount: number, imageCount: number): number[] {
@@ -47,7 +49,11 @@ type Story = {
   length_key: string;
   status: string;
   chapters: Chapter[];
-  context_json?: { includeImages?: boolean };
+  context_json?: {
+    includeImages?: boolean;
+    includeVoice?: boolean;
+    voiceTier?: string;
+  };
 };
 
 export default function StoryPage({
@@ -56,6 +62,7 @@ export default function StoryPage({
   params: Promise<{ id: string }>;
 }) {
   const { t } = useLanguage();
+  const { balance, refreshBalance } = useCoins();
   const [story, setStory] = useState<Story | null>(null);
   const [loading, setLoading] = useState(true);
   const [continuing, setContinuing] = useState(false);
@@ -106,6 +113,12 @@ export default function StoryPage({
   }, [storyId, story?.status]);
 
 
+  const ctx = story?.context_json;
+  const includeVoice = ctx?.includeVoice !== false;
+  const voiceTier = (ctx?.voiceTier ?? "standard") as "standard" | "premium" | "premium-plus";
+  const continueCost = calculateChapterCost(false, includeVoice, false, voiceTier);
+  const canAffordContinue = balance === null || balance >= continueCost;
+
   async function onContinue() {
     setContinuing(true);
     setContinueError(null);
@@ -115,9 +128,15 @@ export default function StoryPage({
       });
       const json = await res.json();
       if (!res.ok) {
+        if (res.status === 402) {
+          await refreshBalance();
+          setContinueError(t("coins.notEnough"));
+          return;
+        }
         setContinueError(json?.error || t("create.failedGenerate"));
         return;
       }
+      await refreshBalance();
       await fetchStory();
     } finally {
       setContinuing(false);
@@ -203,7 +222,8 @@ export default function StoryPage({
         <Link href="/create" className="text-muted-foreground hover:text-foreground transition-colors">
           {t("story.createNew")}
         </Link>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-3">
+          <CoinBalance />
           <LanguageToggle />
         </div>
       </nav>
@@ -239,7 +259,7 @@ export default function StoryPage({
                 const imageIndices = includeImages
                   ? getParagraphIndicesForImages(
                       ch.paragraphs?.length ?? 0,
-                      getImageCountForChapter(story.length_key)
+                      getImageCountForChapter(story.length_key, ch.chapter_index)
                     )
                   : [];
                 const hasImageSlot = imageIndices.includes(paraIdx);
@@ -328,11 +348,22 @@ export default function StoryPage({
         {continueError && (
           <p className="text-sm text-destructive">{continueError}</p>
         )}
+        {!canAffordContinue && (
+          <p className="text-sm text-destructive font-medium">{t("coins.notEnough")}</p>
+        )}
         <Button
           onClick={onContinue}
-          disabled={continuing}
+          disabled={continuing || !canAffordContinue}
         >
-          {continuing ? t("story.generatingNext") : t("story.nextPart")}
+          {continuing ? t("story.generatingNext") : (
+            <span className="flex items-center gap-2">
+              {t("story.nextPart")}
+              <span className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2.5 py-0.5 text-sm">
+                <GoldCoinIcon size={16} />
+                {continueCost}
+              </span>
+            </span>
+          )}
         </Button>
       </div>
     </main>

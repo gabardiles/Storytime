@@ -13,6 +13,8 @@ import {
 import { createRouteHandlerClient } from "@/lib/supabase-route-handler";
 import { getLanguageOption } from "@/lib/languages";
 import { buildTagDirectivesBlock } from "@/lib/tags";
+import { getBalance, calculateChapterCost, deductCoins } from "@/lib/coins";
+import type { VoiceTier } from "@/lib/voices";
 
 export async function POST(req: Request) {
   try {
@@ -34,12 +36,21 @@ export async function POST(req: Request) {
     const tags = Array.isArray(body.tags) ? body.tags : [];
     const storyRules = body.storyRules ?? "";
     const voiceId = body.voiceId ?? "lily";
-    const voiceTier = body.voiceTier ?? "standard";
+    const voiceTier = (body.voiceTier ?? "standard") as VoiceTier;
     const language = body.language ?? "en";
     const includeImages = body.includeImages !== false;
     const includeVoice = body.includeVoice !== false;
     const factsOnly = body.factsOnly === true;
     const langOption = getLanguageOption(language);
+
+    const coinCost = calculateChapterCost(true, includeVoice, includeImages, voiceTier);
+    const balance = await getBalance(user.id);
+    if (balance < coinCost) {
+      return NextResponse.json(
+        { error: "Insufficient coins", coinCost, balance },
+        { status: 402 }
+      );
+    }
 
     const spec = buildStorySpec({
       tone,
@@ -105,7 +116,9 @@ export async function POST(req: Request) {
     }));
     await insertParagraphs(paragraphInserts);
 
-    return NextResponse.json({ storyId, chapterId });
+    await deductCoins(user.id, coinCost, "story_create", storyId, `First chapter of story ${storyId}`);
+
+    return NextResponse.json({ storyId, chapterId, coinCost });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });

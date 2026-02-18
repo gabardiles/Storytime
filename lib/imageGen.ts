@@ -7,9 +7,9 @@ import { supabaseServer } from "./supabase-server";
 import { buildImagePrompt } from "./imagePrompt";
 import type { LengthKey } from "./rulesets";
 
-/** Image count per chapter (fixed at 2) */
-export function getImageCountForChapter(_lengthKey: LengthKey): number {
-  return 2;
+/** Image count: 1 cover image for chapter 1, none for continuations */
+export function getImageCountForChapter(_lengthKey: LengthKey, chapterIndex = 1): number {
+  return chapterIndex === 1 ? 1 : 0;
 }
 
 /** Evenly distributed paragraph indices (0-based) that get images */

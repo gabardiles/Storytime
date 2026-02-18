@@ -9,19 +9,15 @@ import {
   insertChapter,
   insertParagraphs,
   markChapterDone,
-  updateParagraph,
 } from "@/lib/db";
-import {
-  getImageCountForChapter,
-  getParagraphIndicesForImages,
-  generateImageForParagraph,
-} from "@/lib/imageGen";
+
 import { generateParagraphs } from "@/lib/textGen";
 import { generateAudioForParagraph } from "@/lib/tts";
 import { createRouteHandlerClient } from "@/lib/supabase-route-handler";
 import { getLanguageOption } from "@/lib/languages";
 import { buildTagDirectivesBlock } from "@/lib/tags";
 import type { VoiceTier } from "@/lib/voices";
+import { getBalance, calculateChapterCost, deductCoins } from "@/lib/coins";
 
 export async function POST(
   _: Request,
@@ -61,10 +57,17 @@ export async function POST(
     const voiceTier: VoiceTier =
       rawTier === "premium" || rawTier === "premium-plus" ? rawTier : "standard";
     const language = (ctx.language as string) ?? "en";
-    const includeImages = (ctx.includeImages as boolean) !== false;
     const includeVoice = (ctx.includeVoice as boolean) !== false;
     const factsOnly = (ctx.factsOnly as boolean) === true;
-    const visualConsistencyRef = ctx.visualConsistencyRef as string | undefined;
+
+    const coinCost = calculateChapterCost(false, includeVoice, false, voiceTier);
+    const balance = await getBalance(user.id);
+    if (balance < coinCost) {
+      return NextResponse.json(
+        { error: "Insufficient coins", coinCost, balance },
+        { status: 402 }
+      );
+    }
     const langOption = getLanguageOption(language);
     const globalStyleHint =
       (ctx.globalStyleHint as string) ?? `Tone: ${story.tone}. Bedtime-safe.`;
@@ -123,37 +126,15 @@ export async function POST(
     }
 
     await insertParagraphs(paragraphInserts);
-
-    if (includeImages) {
-      const lengthKey = story.length_key as "micro" | "short" | "medium" | "long";
-      const imageCount = getImageCountForChapter(lengthKey);
-      const imageIndices = getParagraphIndicesForImages(paragraphs.length, imageCount);
-      for (let i = 0; i < imageIndices.length; i++) {
-        const idx = imageIndices[i];
-        try {
-          const { imageUrl, imagePrompt } = await generateImageForParagraph(paragraphs[idx], {
-            storyId,
-            chapterId,
-            paragraphIndex: idx + 1,
-            userId: user.id,
-            visualConsistencyRef,
-            imageIndexInStory: i + 1,
-            tags,
-            factsMode: factsOnly,
-          });
-          await updateParagraph(chapterId, idx + 1, { imageUrl, imagePrompt });
-        } catch (err) {
-          console.error(`Image generation failed for paragraph ${idx + 1}:`, err);
-        }
-      }
-    }
-
     await markChapterDone(chapterId);
+
+    await deductCoins(user.id, coinCost, "chapter_continue", chapterId, `Chapter ${nextIndex} of story ${storyId}`);
 
     return NextResponse.json({
       storyId,
       chapterId,
       chapterIndex: nextIndex,
+      coinCost,
     });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Unknown error";

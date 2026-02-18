@@ -110,6 +110,12 @@ const translations: Record<Locale, Record<string, string>> = {
     "story.generatingNext": "Generating next chapter…",
     "story.nextPart": "Next part",
     "story.fallbackTitle": "Story",
+
+    // ── Coins ──
+    "coins.balance": "coins",
+    "coins.cost": "coins",
+    "coins.notEnough": "Not enough coins",
+    "coins.insufficientError": "You need more coins to do this.",
   },
 
   sv: {
@@ -221,6 +227,12 @@ const translations: Record<Locale, Record<string, string>> = {
     "story.generatingNext": "Genererar nästa kapitel…",
     "story.nextPart": "Nästa del",
     "story.fallbackTitle": "Saga",
+
+    // ── Coins ──
+    "coins.balance": "mynt",
+    "coins.cost": "mynt",
+    "coins.notEnough": "Inte tillräckligt med mynt",
+    "coins.insufficientError": "Du behöver fler mynt för detta.",
   },
 };
 

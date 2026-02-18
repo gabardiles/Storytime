@@ -9,6 +9,7 @@ import {
   Libre_Baskerville,
 } from "next/font/google";
 import { LanguageProvider } from "@/lib/LanguageContext";
+import { CoinProvider } from "@/lib/CoinContext";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -66,7 +67,9 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${playfairDisplay.variable} ${bebasNeue.variable} ${cormorantGaramond.variable} ${oswald.variable} ${libreBaskerville.variable} antialiased`}
       >
-        <LanguageProvider>{children}</LanguageProvider>
+        <LanguageProvider>
+          <CoinProvider>{children}</CoinProvider>
+        </LanguageProvider>
       </body>
     </html>
   );

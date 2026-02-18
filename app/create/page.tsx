@@ -30,6 +30,8 @@ import { TONE_OPTIONS } from "@/lib/tones";
 import { serializeTones } from "@/lib/tones";
 import { getTagsForUI } from "@/lib/tags";
 import { useLanguage, LanguageToggle } from "@/lib/LanguageContext";
+import { useCoins, CoinBalance, GoldCoinIcon } from "@/lib/CoinContext";
+import { calculateChapterCost } from "@/lib/coinPricing";
 
 const LENGTH_KEYS = ["micro", "short", "medium", "long"] as const;
 
@@ -71,6 +73,10 @@ export default function CreatePage() {
   const [previewPlaying, setPreviewPlaying] = useState(false);
   const [previewError, setPreviewError] = useState("");
   const [factsOnly, setFactsOnly] = useState(false);
+  const { balance, refreshBalance } = useCoins();
+
+  const coinCost = calculateChapterCost(true, includeVoice, includeImages, voiceTier);
+  const canAfford = balance === null || balance >= coinCost;
 
   function toggleTag(id: string) {
     setTags((prev) =>
@@ -154,8 +160,13 @@ export default function CreatePage() {
           router.push("/login");
           return;
         }
+        if (res.status === 402) {
+          await refreshBalance();
+          throw new Error(t("coins.notEnough"));
+        }
         throw new Error(json?.error || t("create.failedGenerate"));
       }
+      await refreshBalance();
       router.push(`/story/${json.storyId}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : t("create.failedGenerate"));
@@ -185,7 +196,8 @@ export default function CreatePage() {
         >
           {t("create.backLibrary")}
         </Link>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-3">
+          <CoinBalance />
           <LanguageToggle />
         </div>
       </nav>
@@ -460,7 +472,7 @@ export default function CreatePage() {
                       </SelectTrigger>
                       <SelectContent>
                         {getVoicesForTier(voiceTier).map((v) => (
-                          <SelectItem key={v.id} value={v.id}>
+                          <SelectItem key={v.id} value={v.id} description={v.description}>
                             {v.name}
                           </SelectItem>
                         ))}
@@ -561,15 +573,26 @@ export default function CreatePage() {
           <p className="text-sm text-destructive">{error}</p>
         )}
 
+        {!canAfford && (
+          <p className="text-sm text-destructive font-medium">{t("coins.notEnough")}</p>
+        )}
         <Button
           onClick={onGenerate}
-          disabled={loading}
+          disabled={loading || !canAfford}
           className="group relative h-20 w-full gap-2 overflow-hidden bg-primary text-base text-primary-foreground transition-colors hover:bg-transparent disabled:hover:bg-primary"
           size="lg"
         >
           <span className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,var(--primary-light),var(--primary),var(--primary-dark),var(--primary))] bg-[length:200%_100%] opacity-0 transition-opacity group-hover:opacity-100 group-hover:animate-[gradient-roll_1.5s_linear_infinite] group-disabled:opacity-0" />
           <WandSparkles className="size-5 shrink-0 group-hover:animate-[wiggle_0.5s_ease-in-out_infinite] group-disabled:animate-none" strokeWidth={1} />
-          {loading ? t("create.generating") : t("create.generate")}
+          {loading ? t("create.generating") : (
+            <span className="flex items-center gap-2">
+              {t("create.generate")}
+              <span className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2.5 py-0.5 text-sm">
+                <GoldCoinIcon size={16} />
+                {coinCost}
+              </span>
+            </span>
+          )}
         </Button>
       </div>
     </main>

@@ -1,13 +1,17 @@
 "use client";
 
 import { useLanguage, LanguageToggle } from "@/lib/LanguageContext";
+import { CoinBalance } from "@/lib/CoinContext";
 
 export default function LibraryHeader() {
   const { t } = useLanguage();
   return (
     <nav className="flex items-center justify-between mb-8">
       <h1 className="text-2xl font-bold">{t("library.title")}</h1>
-      <LanguageToggle />
+      <div className="flex items-center gap-3">
+        <CoinBalance />
+        <LanguageToggle />
+      </div>
     </nav>
   );
 }

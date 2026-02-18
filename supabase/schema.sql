@@ -175,6 +175,40 @@ on public.user_preferences for update
 using (auth.uid() = user_id)
 with check (auth.uid() = user_id);
 
+-- USER COINS (gold coin balance)
+create table if not exists public.user_coins (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  balance integer not null default 10,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.user_coins enable row level security;
+
+drop policy if exists "user_coins_select_own" on public.user_coins;
+create policy "user_coins_select_own"
+on public.user_coins for select
+using (auth.uid() = user_id);
+
+-- COIN TRANSACTIONS (audit log)
+create table if not exists public.coin_transactions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  amount integer not null,
+  type text not null,
+  reference_id text null,
+  description text not null default '',
+  created_at timestamptz not null default now()
+);
+
+create index if not exists coin_transactions_user_id_idx on public.coin_transactions (user_id);
+
+alter table public.coin_transactions enable row level security;
+
+drop policy if exists "coin_transactions_select_own" on public.coin_transactions;
+create policy "coin_transactions_select_own"
+on public.coin_transactions for select
+using (auth.uid() = user_id);
+
 -- Storage bucket for story audio (create via Supabase Dashboard: Storage > New bucket)
 -- Bucket name: story-audio
 -- Public: Yes (so audio URLs work without signed URLs)

@@ -7,35 +7,38 @@
 export const STANDARD_VOICES = [
   {
     id: "lily",
-    name: "Lily",
+    name: "Ella",
     voiceName: "en-US-Neural2-F",
-    description: "Clear, friendly female narrator",
-    previewText: "My name is Lily.",
+    description: "Young woman, clear and friendly",
+    previewText: "My name is Ella.",
+    previewTextSv: "Mitt namn är Ella.",
   },
   {
     id: "emma",
-    name: "Emma",
+    name: "Sophie",
     voiceName: "en-US-Neural2-C",
-    description: "Articulate female narrator",
-    previewText: "My name is Emma.",
+    description: "Calm woman, articulate",
+    previewText: "My name is Sophie.",
+    previewTextSv: "Mitt namn är Sophie.",
   },
   {
     id: "walter",
-    name: "Walter",
+    name: "Harry",
     voiceName: "en-US-Wavenet-D",
-    description: "Slow, soothing male",
-    previewText: "My name is Walter.",
+    description: "Older man, slow and soothing",
+    previewText: "My name is Harry.",
+    previewTextSv: "Mitt namn är Harry.",
   },
 ] as const;
 
 /** Premium tier: Gemini TTS voices (Flash or Pro) */
 export const PREMIUM_VOICES = [
-  { id: "zephyr", name: "Zephyr", voiceName: "Zephyr", description: "Bright, clear female", previewText: "My name is Zephyr." },
-  { id: "achernar", name: "Achernar", voiceName: "Achernar", description: "Soft, warm female", previewText: "My name is Achernar." },
-  { id: "kore", name: "Kore", voiceName: "Kore", description: "Strong, firm female", previewText: "My name is Kore." },
-  { id: "charon", name: "Charon", voiceName: "Charon", description: "Deep male", previewText: "My name is Charon." },
-  { id: "puck", name: "Puck", voiceName: "Puck", description: "Friendly male", previewText: "My name is Puck." },
-  { id: "leda", name: "Leda", voiceName: "Leda", description: "Warm female narrator", previewText: "My name is Leda." },
+  { id: "zephyr", name: "Erin", voiceName: "Zephyr", description: "Young woman, bright and energetic", previewText: "My name is Erin.", previewTextSv: "Mitt namn är Erin." },
+  { id: "achernar", name: "Nora", voiceName: "Achernar", description: "Soft-spoken woman, warm", previewText: "My name is Nora.", previewTextSv: "Mitt namn är Nora." },
+  { id: "kore", name: "Diana", voiceName: "Kore", description: "Strong woman, firm and confident", previewText: "My name is Diana.", previewTextSv: "Mitt namn är Diana." },
+  { id: "charon", name: "Marcus", voiceName: "Charon", description: "Deep-voiced man, calm", previewText: "My name is Marcus.", previewTextSv: "Mitt namn är Marcus." },
+  { id: "puck", name: "Oliver", voiceName: "Puck", description: "Friendly man, upbeat", previewText: "My name is Oliver.", previewTextSv: "Mitt namn är Oliver." },
+  { id: "leda", name: "Mia", voiceName: "Leda", description: "Young girl, cheerful", previewText: "My name is Mia.", previewTextSv: "Mitt namn är Mia." },
 ] as const;
 
 /** @deprecated Use STANDARD_VOICES. Kept for backward compatibility. */
@@ -93,8 +96,9 @@ export function getVoiceName(voiceOptionId: string): string {
   return config.voiceName;
 }
 
-export function getPreviewText(voiceOptionId: string, tier: VoiceTier): string {
+export function getPreviewText(voiceOptionId: string, tier: VoiceTier, language?: string): string {
   const voices = getVoicesForTier(tier);
   const voice = voices.find((v) => v.id === voiceOptionId);
-  return voice?.previewText ?? "My name is Lily.";
+  if (!voice) return "My name is Ella.";
+  return language === "sv" ? voice.previewTextSv : voice.previewText;
 }
