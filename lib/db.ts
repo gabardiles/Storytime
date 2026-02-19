@@ -151,29 +151,48 @@ export async function getStoryFull(storyId: string) {
   return data;
 }
 
-export async function getUserPreferences(userId: string) {
+export type StoryDefaults = {
+  lengthKey?: "micro" | "short" | "medium" | "long";
+  voiceTier?: string;
+  voiceId?: string;
+  includeVoice?: boolean;
+  includeImages?: boolean;
+};
+
+export type UserPreferences = {
+  ui_language: string;
+  theme?: string | null;
+  story_defaults?: StoryDefaults | null;
+};
+
+export async function getUserPreferences(userId: string): Promise<UserPreferences | null> {
   const sb = supabaseServer();
   const { data } = await sb
     .from("user_preferences")
-    .select("ui_language")
+    .select("ui_language, theme, story_defaults")
     .eq("user_id", userId)
     .single();
-  return data as { ui_language: string } | null;
+  if (!data) return null;
+  return {
+    ui_language: data.ui_language ?? "en",
+    theme: data.theme ?? null,
+    story_defaults: data.story_defaults ?? null,
+  };
 }
 
 export async function upsertUserPreferences(
   userId: string,
-  prefs: { ui_language: string }
+  prefs: { ui_language: string; theme?: string | null; story_defaults?: StoryDefaults | null }
 ) {
   const sb = supabaseServer();
-  const { error } = await sb.from("user_preferences").upsert(
-    {
-      user_id: userId,
-      ui_language: prefs.ui_language,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "user_id" }
-  );
+  const row: Record<string, unknown> = {
+    user_id: userId,
+    ui_language: prefs.ui_language,
+    updated_at: new Date().toISOString(),
+  };
+  if (prefs.theme !== undefined) row.theme = prefs.theme;
+  if (prefs.story_defaults !== undefined) row.story_defaults = prefs.story_defaults;
+  const { error } = await sb.from("user_preferences").upsert(row, { onConflict: "user_id" });
   if (error) throw error;
 }
 

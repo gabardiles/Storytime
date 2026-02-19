@@ -29,7 +29,8 @@ import { LANGUAGE_OPTIONS } from "@/lib/languages";
 import { TONE_OPTIONS } from "@/lib/tones";
 import { serializeTones } from "@/lib/tones";
 import { getTagsForUI } from "@/lib/tags";
-import { useLanguage, LanguageToggle } from "@/lib/LanguageContext";
+import { useLanguage } from "@/lib/LanguageContext";
+import { Settings } from "@/components/Settings";
 import { useCoins, CoinBalance, GoldCoinIcon } from "@/lib/CoinContext";
 import { calculateChapterCost } from "@/lib/coinPricing";
 
@@ -56,10 +57,29 @@ export default function CreatePage() {
   const [voiceId, setVoiceId] = useState<string>("walter");
   const [language, setLanguage] = useState<string>(locale);
   const [languageManuallySet, setLanguageManuallySet] = useState(false);
+  const [defaultsLoaded, setDefaultsLoaded] = useState(false);
 
   useEffect(() => {
     if (!languageManuallySet) setLanguage(locale);
   }, [locale, languageManuallySet]);
+
+  useEffect(() => {
+    if (defaultsLoaded) return;
+    fetch("/api/user-preferences")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        setDefaultsLoaded(true);
+        const d = data?.story_defaults;
+        if (d && typeof d === "object") {
+          if (d.lengthKey) setLengthKey(d.lengthKey);
+          if (d.voiceTier) setVoiceTier(d.voiceTier as VoiceTier);
+          if (d.voiceId) setVoiceId(d.voiceId);
+          if (typeof d.includeVoice === "boolean") setIncludeVoice(d.includeVoice);
+          if (typeof d.includeImages === "boolean") setIncludeImages(d.includeImages);
+        }
+      })
+      .catch(() => setDefaultsLoaded(true));
+  }, [defaultsLoaded]);
 
   const [userInput, setUserInput] = useState("");
   const [storyRules, setStoryRules] = useState("");
@@ -75,7 +95,7 @@ export default function CreatePage() {
   const [factsOnly, setFactsOnly] = useState(false);
   const { balance, refreshBalance } = useCoins();
 
-  const coinCost = calculateChapterCost(true, includeVoice, includeImages, voiceTier);
+  const coinCost = calculateChapterCost(true, includeVoice, includeImages, voiceTier, lengthKey);
   const canAfford = balance === null || balance >= coinCost;
 
   function toggleTag(id: string) {
@@ -198,7 +218,7 @@ export default function CreatePage() {
         </Link>
         <div className="ml-auto flex items-center gap-3">
           <CoinBalance />
-          <LanguageToggle />
+          <Settings />
         </div>
       </nav>
 

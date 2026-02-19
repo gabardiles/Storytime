@@ -10,6 +10,7 @@ import {
 } from "next/font/google";
 import { LanguageProvider } from "@/lib/LanguageContext";
 import { CoinProvider } from "@/lib/CoinContext";
+import { ThemeProvider } from "@/lib/ThemeProvider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -63,13 +64,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${playfairDisplay.variable} ${bebasNeue.variable} ${cormorantGaramond.variable} ${oswald.variable} ${libreBaskerville.variable} antialiased`}
       >
-        <LanguageProvider>
-          <CoinProvider>{children}</CoinProvider>
-        </LanguageProvider>
+        <ThemeProvider>
+          <LanguageProvider>
+            <CoinProvider>{children}</CoinProvider>
+          </LanguageProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

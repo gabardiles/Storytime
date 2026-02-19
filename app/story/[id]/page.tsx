@@ -4,10 +4,13 @@ import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { formatTonesForDisplay } from "@/lib/tones";
 import { ImageLightbox } from "@/components/ImageLightbox";
-import { ImageIcon, Play, Pause, Loader2 } from "lucide-react";
-import { useLanguage, LanguageToggle } from "@/lib/LanguageContext";
+import { ImageIcon, Play, Pause, Loader2, WandSparkles } from "lucide-react";
+import { useLanguage } from "@/lib/LanguageContext";
+import { Settings } from "@/components/Settings";
 import { useCoins, CoinBalance, GoldCoinIcon } from "@/lib/CoinContext";
 import { calculateChapterCost } from "@/lib/coinPricing";
 
@@ -67,6 +70,7 @@ export default function StoryPage({
   const [loading, setLoading] = useState(true);
   const [continuing, setContinuing] = useState(false);
   const [continueError, setContinueError] = useState<string | null>(null);
+  const [directionInput, setDirectionInput] = useState("");
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [storyId, setStoryId] = useState<string>("");
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
@@ -116,7 +120,8 @@ export default function StoryPage({
   const ctx = story?.context_json;
   const includeVoice = ctx?.includeVoice !== false;
   const voiceTier = (ctx?.voiceTier ?? "standard") as "standard" | "premium" | "premium-plus";
-  const continueCost = calculateChapterCost(false, includeVoice, false, voiceTier);
+  const lengthKey = (story?.length_key ?? "medium") as "micro" | "short" | "medium" | "long";
+  const continueCost = calculateChapterCost(false, includeVoice, false, voiceTier, lengthKey);
   const canAffordContinue = balance === null || balance >= continueCost;
 
   async function onContinue() {
@@ -125,6 +130,8 @@ export default function StoryPage({
     try {
       const res = await fetch(`/api/stories/${storyId}/continue`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ directionInput: directionInput.trim().slice(0, 500) }),
       });
       const json = await res.json();
       if (!res.ok) {
@@ -137,6 +144,7 @@ export default function StoryPage({
         return;
       }
       await refreshBalance();
+      setDirectionInput("");
       await fetchStory();
     } finally {
       setContinuing(false);
@@ -224,7 +232,7 @@ export default function StoryPage({
         </Link>
         <div className="ml-auto flex items-center gap-3">
           <CoinBalance />
-          <LanguageToggle />
+          <Settings />
         </div>
       </nav>
 
@@ -344,7 +352,18 @@ export default function StoryPage({
         src={lightboxImage ?? ""}
       />
 
-      <div className="mt-8 flex flex-col gap-4">
+      <div className="mt-8 flex flex-col gap-4 items-center">
+        <div className="space-y-2 w-full max-w-md flex flex-col items-center text-center">
+          <Label htmlFor="direction" className="text-center">{t("story.directionLabel")}</Label>
+          <Input
+            id="direction"
+            type="text"
+            value={directionInput}
+            onChange={(e) => setDirectionInput(e.target.value)}
+            placeholder={t("story.directionPlaceholder")}
+            className="w-full"
+          />
+        </div>
         {continueError && (
           <p className="text-sm text-destructive">{continueError}</p>
         )}
@@ -354,7 +373,11 @@ export default function StoryPage({
         <Button
           onClick={onContinue}
           disabled={continuing || !canAffordContinue}
+          className="group relative h-20 w-full max-w-md gap-2 overflow-hidden bg-primary text-base text-primary-foreground transition-colors hover:bg-transparent disabled:hover:bg-primary"
+          size="lg"
         >
+          <span className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,var(--primary-light),var(--primary),var(--primary-dark),var(--primary))] bg-[length:200%_100%] opacity-0 transition-opacity group-hover:opacity-100 group-hover:animate-[gradient-roll_1.5s_linear_infinite] group-disabled:opacity-0" />
+          <WandSparkles className="size-5 shrink-0 group-hover:animate-[wiggle_0.5s_ease-in-out_infinite] group-disabled:animate-none" strokeWidth={1} />
           {continuing ? t("story.generatingNext") : (
             <span className="flex items-center gap-2">
               {t("story.nextPart")}

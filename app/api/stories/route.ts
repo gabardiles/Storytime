@@ -43,7 +43,8 @@ export async function POST(req: Request) {
     const factsOnly = body.factsOnly === true;
     const langOption = getLanguageOption(language);
 
-    const coinCost = calculateChapterCost(true, includeVoice, includeImages, voiceTier);
+    const lengthKeyTyped = lengthKey as "micro" | "short" | "medium" | "long";
+    const coinCost = calculateChapterCost(true, includeVoice, includeImages, voiceTier, lengthKeyTyped);
     const balance = await getBalance(user.id);
     if (balance < coinCost) {
       return NextResponse.json(

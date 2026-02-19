@@ -20,11 +20,16 @@ import type { VoiceTier } from "@/lib/voices";
 import { getBalance, calculateChapterCost, deductCoins } from "@/lib/coins";
 
 export async function POST(
-  _: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id: storyId } = await params;
+
+    const body = await req.json().catch(() => ({}));
+    const directionInput = typeof body.directionInput === "string"
+      ? body.directionInput.trim().slice(0, 500)
+      : "";
 
     const supabase = await createRouteHandlerClient();
     const {
@@ -60,7 +65,8 @@ export async function POST(
     const includeVoice = (ctx.includeVoice as boolean) !== false;
     const factsOnly = (ctx.factsOnly as boolean) === true;
 
-    const coinCost = calculateChapterCost(false, includeVoice, false, voiceTier);
+    const lengthKeyTyped = (story.length_key ?? "medium") as "micro" | "short" | "medium" | "long";
+    const coinCost = calculateChapterCost(false, includeVoice, false, voiceTier, lengthKeyTyped);
     const balance = await getBalance(user.id);
     if (balance < coinCost) {
       return NextResponse.json(
@@ -96,6 +102,7 @@ export async function POST(
       instructionsFromFile: loadInstructions(),
       language: langOption.promptName,
       factsOnly,
+      directionInput,
     });
 
     const paragraphInserts = [];

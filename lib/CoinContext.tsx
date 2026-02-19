@@ -9,6 +9,14 @@ import {
   useMemo,
   useState,
 } from "react";
+import { useLanguage } from "@/lib/LanguageContext";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 type CoinContextValue = {
   balance: number | null;
@@ -109,16 +117,88 @@ export function GoldCoinIcon({ size = 24 }: { size?: number }) {
 
 export function CoinBalance({ className }: { className?: string }) {
   const { balance } = useCoins();
+  const { t } = useLanguage();
+  const [popupOpen, setPopupOpen] = useState(false);
 
   if (balance === null) return null;
 
   return (
-    <div
-      className={`flex items-center gap-1.5 text-sm font-medium ${className ?? ""}`}
-      title={`${balance} coins`}
-    >
-      <GoldCoinIcon size={24} />
-      <span>{balance}</span>
-    </div>
+    <>
+      <button
+        type="button"
+        onClick={() => setPopupOpen(true)}
+        className={`flex items-center gap-1.5 rounded-lg bg-muted/80 px-2.5 py-1.5 text-sm font-medium hover:bg-muted transition-colors ${className ?? ""}`}
+        title={t("coins.popup.title")}
+      >
+        <GoldCoinIcon size={24} />
+        <span>{balance}</span>
+      </button>
+      <Dialog open={popupOpen} onOpenChange={setPopupOpen}>
+        <DialogContent animateFromCenter className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("coins.popup.title")}</DialogTitle>
+            <DialogDescription asChild>
+              <div className="space-y-4 pt-1 text-sm leading-relaxed text-muted-foreground">
+                <p>{t("coins.popup.intro")}</p>
+                <div className="space-y-1.5">
+                  <p className="font-medium text-foreground">{t("coins.popup.whatAffects")}</p>
+                  <p>{t("coins.popup.length")}</p>
+                  <p>{t("coins.popup.voice")}</p>
+                  <p>{t("coins.popup.firstChapter")}</p>
+                </div>
+                <div className="space-y-3 pt-1 border-t border-border pt-3">
+                  <p className="font-medium text-foreground">{t("coins.popup.examples")}</p>
+                  <div className="space-y-1.5">
+                    <p>
+                      <span className="inline-block rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-foreground">
+                        {t("coins.popup.exampleShortTitle")}
+                      </span>
+                    </p>
+                    <p>{t("coins.popup.exampleShortDesc")}</p>
+                    <p className="flex items-center gap-1">
+                      <span>2</span>
+                      <GoldCoinIcon size={16} />
+                    </p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <p>
+                      <span className="inline-block rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-foreground">
+                        {t("coins.popup.exampleMediumTitle")}
+                      </span>
+                    </p>
+                    <p>{t("coins.popup.exampleMediumDesc")}</p>
+                    <p className="flex items-center gap-1">
+                      <span>4</span>
+                      <GoldCoinIcon size={16} />
+                    </p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <p>
+                      <span className="inline-block rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-foreground">
+                        {t("coins.popup.exampleLongTitle")}
+                      </span>
+                    </p>
+                    <p>{t("coins.popup.exampleLongDesc")}</p>
+                    <p className="flex flex-wrap items-center gap-1">
+                      <span>4</span>
+                      <GoldCoinIcon size={16} />
+                      <span className="text-muted-foreground">+</span>
+                      <span>3</span>
+                      <GoldCoinIcon size={16} />
+                      <span className="text-muted-foreground">+</span>
+                      <span>3</span>
+                      <GoldCoinIcon size={16} />
+                      <span className="text-muted-foreground">=</span>
+                      <span>10</span>
+                      <GoldCoinIcon size={16} />
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

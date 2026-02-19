@@ -1,7 +1,8 @@
 "use client";
 
-import { useLanguage, LanguageToggle } from "@/lib/LanguageContext";
+import { useLanguage } from "@/lib/LanguageContext";
 import { CoinBalance } from "@/lib/CoinContext";
+import { Settings } from "@/components/Settings";
 
 export default function LibraryHeader() {
   const { t } = useLanguage();
@@ -10,7 +11,7 @@ export default function LibraryHeader() {
       <h1 className="text-2xl font-bold">{t("library.title")}</h1>
       <div className="flex items-center gap-3">
         <CoinBalance />
-        <LanguageToggle />
+        <Settings />
       </div>
     </nav>
   );

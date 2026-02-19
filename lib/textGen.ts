@@ -12,6 +12,7 @@ export async function generateParagraphs(spec: {
   instructionsFromFile?: string;
   language?: string;
   factsOnly?: boolean;
+  directionInput?: string;
 }): Promise<string[]> {
   const language = spec.language ?? "English";
   const opening = spec.factsOnly
@@ -29,6 +30,9 @@ export async function generateParagraphs(spec: {
     `Chapter index: ${spec.chapterIndex}`,
     spec.recap ? `Recap so far: ${spec.recap}` : "",
     `User input: ${spec.userInput}`,
+    spec.directionInput
+      ? `For this chapter, the child wants to add or explore: ${spec.directionInput}. Weave this into the narrative naturally.`
+      : "",
     spec.tagDirectives
       ? `TAG DIRECTIVES (mandatory — follow these for selected tags):\n${spec.tagDirectives}`
       : "",

@@ -7,7 +7,8 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useLanguage, LanguageToggle } from "@/lib/LanguageContext";
+import { useLanguage } from "@/lib/LanguageContext";
+import { Settings } from "@/components/Settings";
 
 function LoginForm() {
   const { t } = useLanguage();
@@ -51,7 +52,7 @@ function LoginForm() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-8">
       <div className="absolute top-4 right-4">
-        <LanguageToggle />
+        <Settings />
       </div>
 
       <div className="w-full max-w-md space-y-6">
