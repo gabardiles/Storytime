@@ -21,7 +21,7 @@ export function ImageLightbox({
 }: ImageLightboxProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent animateFromCenter className="max-w-[95vw] max-h-[95vh] w-auto h-auto p-0 border-0 bg-transparent overflow-hidden">
+      <DialogContent animateFromCenter className="max-w-[95vw] max-h-[95vh] w-auto h-auto p-0 border-0 bg-transparent overflow-hidden [&_.dialog-body]:p-0 [&_.dialog-body]:flex [&_.dialog-body]:items-center [&_.dialog-body]:justify-center">
         <DialogTitle className="sr-only">{alt}</DialogTitle>
         {src && (
           <img

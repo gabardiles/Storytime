@@ -264,7 +264,7 @@ export default function BookDetailsDialog({
             return (
               <DialogContent
                 animateFromCenter
-                className="p-0 overflow-hidden sm:max-w-md aspect-[3/4] min-h-[320px] border-0 [&>button]:text-white [&>button]:opacity-90 [&>button:hover]:opacity-100 [&>button]:bg-transparent [&>button]:border-0"
+                className="p-0 overflow-hidden sm:max-w-md aspect-[3/4] min-h-[320px] border-0 [&_.dialog-body]:p-0 [&>button]:text-white [&>button]:opacity-90 [&>button:hover]:opacity-100 [&>button]:bg-transparent [&>button]:border-0"
                 aria-describedby={undefined}
               >
                 <DialogTitle className="sr-only">{title}</DialogTitle>
