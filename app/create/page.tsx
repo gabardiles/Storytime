@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { buildStorySpec, buildOpenAIPrompt } from "@/lib/storySpec";
@@ -38,7 +38,7 @@ const LENGTH_KEYS = ["micro", "short", "medium", "long"] as const;
 
 const TAGS = getTagsForUI();
 
-export default function CreatePage() {
+function CreatePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isModal = searchParams.get("modal") === "1";
@@ -216,10 +216,16 @@ export default function CreatePage() {
         </div>
       )}
       <nav className="flex items-center gap-4 mb-8">
-        {isModal && typeof window !== "undefined" && window.self !== window.top ? (
+        {isModal ? (
           <button
             type="button"
-            onClick={() => window.parent.postMessage({ type: "create-modal-close" }, "*")}
+            onClick={() => {
+              if (typeof window !== "undefined" && window.self !== window.top) {
+                window.parent.postMessage({ type: "create-modal-close" }, "*");
+              } else {
+                router.push("/library");
+              }
+            }}
             className="text-muted-foreground hover:text-foreground transition-colors"
           >
             {t("create.backLibrary")}
@@ -632,5 +638,13 @@ export default function CreatePage() {
         </Button>
       </div>
     </main>
+  );
+}
+
+export default function CreatePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-background text-muted-foreground">Loading...</div>}>
+      <CreatePageContent />
+    </Suspense>
   );
 }

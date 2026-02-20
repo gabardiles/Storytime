@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { formatTonesForDisplay } from "@/lib/tones";
+import { parseTones, TONE_OPTIONS } from "@/lib/tones";
 
 /* ── WCAG AA contrast: 4.5:1 for normal text ── */
 const AA_CONTRAST = 4.5;
@@ -167,7 +167,10 @@ export default function BookCover({
 
   const title = story.title ?? `Story ${story.id.slice(0, 8)}`;
   const displayTitle = title.length > 30 ? `${title.slice(0, 28)}...` : title;
-  const toneDisplay = formatTonesForDisplay(story.tone);
+  const toneIds = parseTones(story.tone);
+  const toneIcons = toneIds
+    .map((id) => TONE_OPTIONS.find((t) => t.id === id))
+    .filter((t): t is (typeof TONE_OPTIONS)[number] => t != null);
 
   /* Placement: top or bottom only (0 = top, 1 = bottom) */
   const placement = hash % 2;
@@ -337,15 +340,13 @@ export default function BookCover({
           }}
         >
           <div className="flex flex-col items-center gap-0.5 w-full">
-            {toneDisplay ? (
-              <span
-                className={cn(
-                  "uppercase tracking-[0.12em] font-sans opacity-70",
-                  size.subtitleSize
-                )}
-              >
-                {toneDisplay}
-              </span>
+            {toneIcons.length > 0 ? (
+              <div className="flex items-center justify-center gap-1.5 opacity-70" aria-hidden>
+                {toneIcons.map((t) => {
+                  const Icon = t.icon;
+                  return <Icon key={t.id} className="flex-shrink-0" size={14} />;
+                })}
+              </div>
             ) : null}
             <span
               className={cn(
@@ -375,19 +376,20 @@ export default function BookCover({
           }}
         >
           <div className="space-y-0.5">
-            {toneDisplay ? (
-              <span
-                className={cn(
-                  "block uppercase tracking-[0.15em] font-sans opacity-80",
-                  size.subtitleSize
-                )}
+            {toneIcons.length > 0 ? (
+              <div
+                className="flex items-center justify-center gap-1.5 opacity-90"
                 style={{
                   color: "#F8F0E3",
                   textShadow: "0 1px 3px rgba(0,0,0,0.6)",
                 }}
+                aria-hidden
               >
-                {toneDisplay}
-              </span>
+                {toneIcons.map((t) => {
+                  const Icon = t.icon;
+                  return <Icon key={t.id} className="flex-shrink-0" size={14} />;
+                })}
+              </div>
             ) : null}
             <span
               className={cn(
@@ -429,15 +431,13 @@ export default function BookCover({
             <path d="M7 0l1.8 5.2H14l-4.2 3L11.5 14 7 10.7 2.5 14l1.7-5.8L0 5.2h5.2z" />
           </svg>
 
-          {toneDisplay ? (
-            <span
-              className={cn(
-                "uppercase tracking-[0.12em] font-sans italic opacity-70",
-                size.subtitleSize
-              )}
-            >
-              {toneDisplay}
-            </span>
+          {toneIcons.length > 0 ? (
+            <div className="flex items-center justify-center gap-1.5 opacity-70 mb-0.5" aria-hidden>
+              {toneIcons.map((t) => {
+                const Icon = t.icon;
+                return <Icon key={t.id} className="flex-shrink-0" size={14} />;
+              })}
+            </div>
           ) : null}
 
           <span
