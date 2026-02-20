@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -65,6 +66,8 @@ export default function StoryPage({
   params: Promise<{ id: string }>;
 }) {
   const { t } = useLanguage();
+  const searchParams = useSearchParams();
+  const isModal = searchParams.get("modal") === "1";
   const { balance, refreshBalance } = useCoins();
   const [story, setStory] = useState<Story | null>(null);
   const [loading, setLoading] = useState(true);
@@ -224,9 +227,19 @@ export default function StoryPage({
   return (
     <main className="min-h-screen p-6 md:p-8 max-w-2xl mx-auto">
       <nav className="flex items-center gap-4 mb-8">
-        <Link href="/library" className="text-muted-foreground hover:text-foreground transition-colors">
-          {t("story.backLibrary")}
-        </Link>
+        {isModal && typeof window !== "undefined" && window.self !== window.top ? (
+          <button
+            type="button"
+            onClick={() => window.parent.postMessage({ type: "story-modal-close" }, "*")}
+            className="text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {t("story.backLibrary")}
+          </button>
+        ) : (
+          <Link href="/library" className="text-muted-foreground hover:text-foreground transition-colors">
+            {t("story.backLibrary")}
+          </Link>
+        )}
         <Link href="/create" className="text-muted-foreground hover:text-foreground transition-colors">
           {t("story.createNew")}
         </Link>

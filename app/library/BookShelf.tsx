@@ -44,79 +44,58 @@ function seededRandom(seed: number): number {
 
 /**
  * Build items for one shelf row.
- * Randomly places 1–3 decorative objects among books (position varies per row).
+ * When includeDeco is true: 2 books + 1 decoration (deco at end). When false: books only.
  */
 function buildShelfItems(
   stories: Story[],
   startIdx: number,
-  shelfSeed: number
+  shelfSeed: number,
+  includeDeco: boolean
 ): ShelfItem[] {
   const bookItems: ShelfItem[] = stories.map((story, i) => ({
     kind: "book" as const,
     story,
     index: startIdx + i,
   }));
+  if (bookItems.length === 0) return [];
 
-  const bookCount = bookItems.length;
-  if (bookCount === 0) return [];
+  if (!includeDeco) return bookItems;
 
-  const decoCount = 1;
-  const decoPositions: number[] = [];
-  const used = new Set<number>();
-  for (let i = 0; i < decoCount; i++) {
-    let pos = Math.floor(seededRandom(shelfSeed + i * 7 + 1) * (bookCount + 1));
-    let attempts = 0;
-    while (used.has(pos) && attempts < 20) {
-      pos = Math.floor(seededRandom(shelfSeed + i * 7 + attempts) * (bookCount + 1));
-      attempts++;
-    }
-    used.add(pos);
-    decoPositions.push(pos);
-  }
-  decoPositions.sort((a, b) => a - b);
-
-  const result: ShelfItem[] = [];
-  let bookIdx = 0;
-  let decoIdx = 0;
-  for (let slot = 0; slot < bookCount + decoCount; slot++) {
-    if (decoIdx < decoPositions.length && result.length === decoPositions[decoIdx]) {
-      const seedStory = stories[Math.min(bookIdx, bookCount - 1)];
-      const seed = seedStory?.id ?? String(shelfSeed);
-      const imageUrl = stories.find((s) => s.context_json?.coverImageUrl)?.context_json
-        ?.coverImageUrl as string | undefined;
-      result.push({ kind: "deco", seed, index: startIdx + decoIdx, imageUrl });
-      decoIdx++;
-    } else if (bookIdx < bookCount) {
-      result.push(bookItems[bookIdx]);
-      bookIdx++;
-    }
-  }
-  return result;
+  const seedStory = stories[0];
+  const seed = seedStory?.id ?? String(shelfSeed);
+  const imageUrl = stories.find((s) => s.context_json?.coverImageUrl)?.context_json
+    ?.coverImageUrl as string | undefined;
+  return [...bookItems, { kind: "deco" as const, seed, index: startIdx + bookItems.length, imageUrl }];
 }
 
 /**
  * Split stories into shelf rows.
- * 3 books per row. "New story" is the first item on the first row.
+ * 3 books per row (or 2 books + decoration on every second row). "New story" is first on first row.
  */
-function buildShelves(stories: Story[], perShelf: number): ShelfItem[][] {
+function buildShelves(stories: Story[], _perShelf: number): ShelfItem[][] {
   const shelves: ShelfItem[][] = [];
   let offset = 0;
 
-  // First row: "new" takes first slot, then perShelf - 1 books
-  const firstRowTake = Math.min(stories.length, perShelf - 1);
-  const firstSlice = stories.slice(0, firstRowTake);
+  // First row: "new" + 2 books (3 slots)
+  const firstSlice = stories.slice(0, 2);
   const firstSeed = hashStr(firstSlice[0]?.id ?? "0") + 0;
-  const firstRowItems = buildShelfItems(firstSlice, 0, firstSeed);
+  const firstRowItems = buildShelfItems(firstSlice, 0, firstSeed, false);
   firstRowItems.unshift({ kind: "new" });
   shelves.push(firstRowItems);
   offset += firstSlice.length;
 
-  // Remaining rows: perShelf books each
-  for (let i = firstRowTake; i < stories.length; i += perShelf) {
-    const slice = stories.slice(i, i + perShelf);
+  // Alternating rows: row 1 = 2 books + deco, row 2 = 3 books, row 3 = 2 books + deco, ...
+  let i = 2;
+  let rowIndex = 1;
+  while (i < stories.length) {
+    const includeDeco = rowIndex % 2 === 1; // odd rows (1, 3, 5...) get decoration
+    const take = includeDeco ? 2 : 3;
+    const slice = stories.slice(i, i + take);
     const shelfSeed = hashStr(slice[0]?.id ?? String(i)) + i * 1000;
-    shelves.push(buildShelfItems(slice, offset, shelfSeed));
+    shelves.push(buildShelfItems(slice, offset, shelfSeed, includeDeco));
     offset += slice.length;
+    i += take;
+    rowIndex++;
   }
 
   if (shelves.length === 0) {
@@ -143,19 +122,24 @@ function getBookTransform(index: number, id: string): React.CSSProperties {
   };
 }
 
+const newStoryBookClasses =
+  "group relative flex-shrink-0 cursor-pointer transition-transform duration-200 hover:-translate-y-1 hover:scale-[1.03] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background ml-1 mr-2 sm:ml-3 sm:mr-4 w-[107px] h-[133px] sm:w-[118px] sm:h-[165px]";
+
 /* ── Shelf Row ── */
 function ShelfRow({
   items,
   onBookClick,
+  onCreateNewStory,
 }: {
   items: ShelfItem[];
   onBookClick: (s: Story) => void;
+  onCreateNewStory?: () => void;
 }) {
   const { t } = useLanguage();
   return (
     <div className="relative pb-3 sm:pb-4">
       {/* Books area */}
-      <div className="flex items-end justify-center px-1 pb-0 pt-2 sm:px-5 sm:pt-4">
+      <div className="flex items-end justify-center gap-2 px-0 pb-0 pt-1.5 sm:gap-3 sm:px-5 sm:pt-4">
         {items.map((item, i) => {
           if (item.kind === "book") {
             return (
@@ -186,13 +170,8 @@ function ShelfRow({
               </div>
             );
           }
-          return (
-            <Link
-              key="new-story"
-              href="/create"
-              className="group relative flex-shrink-0 cursor-pointer transition-transform duration-200 hover:-translate-y-1 hover:scale-[1.03] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background ml-1 mr-2 sm:ml-3 sm:mr-4 w-[78px] h-[108px] sm:w-[118px] sm:h-[165px]"
-              aria-label={t("library.createNewStory")}
-            >
+          const newStoryContent = (
+            <>
               {/* Spine – left binding edge, always visible */}
               <div
                 className="absolute left-0 top-0 bottom-0 rounded-l-[3px]"
@@ -248,17 +227,40 @@ function ShelfRow({
                   background: "linear-gradient(to bottom, rgba(0,0,0,0.04), rgba(0,0,0,0.08))",
                 }}
               />
+            </>
+          );
+          if (onCreateNewStory) {
+            return (
+              <button
+                key="new-story"
+                type="button"
+                onClick={onCreateNewStory}
+                className={newStoryBookClasses}
+                aria-label={t("library.createNewStory")}
+              >
+                {newStoryContent}
+              </button>
+            );
+          }
+          return (
+            <Link
+              key="new-story"
+              href="/create"
+              className={newStoryBookClasses}
+              aria-label={t("library.createNewStory")}
+            >
+              {newStoryContent}
             </Link>
           );
         })}
       </div>
 
-      {/* Shelf ledge – clean, light colored with shadow underneath */}
+      {/* Shelf ledge – wood tone (light in light mode, dark wood in dark mode) */}
       <div
         className="relative h-[6px] sm:h-[8px] rounded-b-[2px]"
         style={{
-          background: "linear-gradient(to bottom, hsl(35 15% 78%), hsl(35 12% 72%))",
-          boxShadow: "0 4px 8px rgba(0,0,0,0.15), 0 2px 3px rgba(0,0,0,0.1)",
+          background: "var(--shelf-ledge)",
+          boxShadow: "var(--shelf-ledge-shadow)",
         }}
       />
     </div>
@@ -269,9 +271,15 @@ function ShelfRow({
 export default function BookShelf({
   stories,
   onDelete,
+  onCreateNewStory,
+  onOpenStoryModal,
 }: {
   stories: Story[];
   onDelete: (id: string) => void;
+  /** When set, "new story" opens create in a modal instead of linking to /create. */
+  onCreateNewStory?: () => void;
+  /** When set, "Start reading" opens the story in a modal instead of navigating. */
+  onOpenStoryModal?: (storyId: string) => void;
 }) {
   const [selectedStory, setSelectedStory] = useState<Story | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -285,7 +293,7 @@ export default function BookShelf({
     return () => mq.removeEventListener("change", fn);
   }, []);
 
-  const perShelf = isMobile ? 2 : 3;
+  const perShelf = 3; // 3 books per row (or 2 + deco on alternating rows)
   const shelves = useMemo(() => buildShelves(stories, perShelf), [stories, perShelf]);
 
   function handleBookClick(story: Story) {
@@ -295,16 +303,21 @@ export default function BookShelf({
 
   return (
     <>
-      {/* Wall back-panel – warm, light, like the reference */}
+      {/* Wall back-panel – light wood in light mode, dark wood in dark mode */}
       <div
-        className="rounded-xl p-3 sm:p-5"
+        className="rounded-xl p-1.5 sm:p-5"
         style={{
-          background: "linear-gradient(180deg, hsl(35 15% 88%) 0%, hsl(35 12% 84%) 100%)",
-          boxShadow: "inset 0 1px 3px rgba(0,0,0,0.06), 0 2px 12px rgba(0,0,0,0.08)",
+          background: "var(--shelf-wall)",
+          boxShadow: "var(--shelf-wall-shadow)",
         }}
       >
         {shelves.map((items, i) => (
-          <ShelfRow key={i} items={items} onBookClick={handleBookClick} />
+          <ShelfRow
+            key={i}
+            items={items}
+            onBookClick={handleBookClick}
+            onCreateNewStory={onCreateNewStory}
+          />
         ))}
       </div>
 
@@ -313,6 +326,7 @@ export default function BookShelf({
         open={drawerOpen}
         onOpenChange={setDrawerOpen}
         onDelete={onDelete}
+        onOpenStoryModal={onOpenStoryModal}
       />
     </>
   );

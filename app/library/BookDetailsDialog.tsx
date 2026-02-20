@@ -163,18 +163,18 @@ function MobileDrawer({
       />
 
       <div
-        className={`fixed right-0 top-0 bottom-0 z-50 w-[85vw] max-w-sm border-l shadow-2xl transition-transform duration-300 ease-out overflow-hidden ${
+        className={`fixed inset-0 z-50 w-full max-w-full border-0 shadow-2xl transition-transform duration-300 ease-out overflow-hidden sm:right-0 sm:top-0 sm:bottom-0 sm:left-auto sm:w-[85vw] sm:max-w-sm sm:border-l ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
         role="dialog"
         aria-modal={open}
       >
-        <div className="relative h-full flex flex-col animate-in fade-in duration-200">
+        <div className="relative h-full w-full flex flex-col animate-in fade-in duration-200">
           {hasImage ? (
             <img
               src={coverImageUrl}
               alt=""
-              className="absolute inset-0 w-full h-full object-cover"
+              className="absolute inset-0 w-full h-full object-cover min-h-full min-w-full"
             />
           ) : (
             <div
@@ -214,11 +214,14 @@ export default function BookDetailsDialog({
   open,
   onOpenChange,
   onDelete,
+  onOpenStoryModal,
 }: {
   story: Story | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onDelete: (id: string) => void;
+  /** When set, "Start reading" opens the story in a modal instead of navigating. */
+  onOpenStoryModal?: (storyId: string) => void;
 }) {
   const router = useRouter();
   const { t } = useLanguage();
@@ -229,7 +232,11 @@ export default function BookDetailsDialog({
 
   function handleStartReading() {
     onOpenChange(false);
-    router.push(`/story/${story!.id}`);
+    if (onOpenStoryModal) {
+      onOpenStoryModal(story!.id);
+    } else {
+      router.push(`/story/${story!.id}`);
+    }
   }
 
   function handleDelete() {

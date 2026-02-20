@@ -1,15 +1,90 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { formatTonesForDisplay } from "@/lib/tones";
 
-/* ── Fonts assigned via CSS variables from layout.tsx ── */
+/* ── WCAG AA contrast: 4.5:1 for normal text ── */
+const AA_CONTRAST = 4.5;
+const IMAGE_TEXT_COLOR = "#F8F0E3";
+
+/** Relative luminance (0–1) from sRGB hex. */
+function hexToLuminance(hex: string): number {
+  const n = parseInt(hex.slice(1), 16);
+  const r = ((n >> 16) & 0xff) / 255;
+  const g = ((n >> 8) & 0xff) / 255;
+  const b = (n & 0xff) / 255;
+  const [rs, gs, bs] = [r, g, b].map((c) =>
+    c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)
+  );
+  return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs;
+}
+
+/** Contrast ratio between two luminances (WCAG). */
+function contrastRatio(L1: number, L2: number): number {
+  const [light, dark] = L1 >= L2 ? [L1, L2] : [L2, L1];
+  return (light + 0.05) / (dark + 0.05);
+}
+
+/**
+ * Sample image region (top or bottom) and return average luminance, or null if unmeasurable (e.g. CORS).
+ */
+function sampleImageLuminance(
+  imageUrl: string,
+  placement: number
+): Promise<number | null> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      try {
+        const w = 64;
+        const h = Math.max(32, Math.round(64 * (img.height / img.width)));
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          resolve(null);
+          return;
+        }
+        // Draw cover-style (fill and crop center)
+        const scale = Math.max(w / img.width, h / img.height);
+        const sw = img.width * scale;
+        const sh = img.height * scale;
+        ctx.drawImage(img, (w - sw) / 2, (h - sh) / 2, sw, sh);
+        const bandHeight = Math.max(1, Math.floor(h * 0.35));
+        const y0 = placement === 0 ? 0 : h - bandHeight;
+        const data = ctx.getImageData(0, y0, w, bandHeight).data;
+        let sum = 0;
+        let count = 0;
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i] / 255;
+          const g = data[i + 1] / 255;
+          const b = data[i + 2] / 255;
+          const [rs, gs, bs] = [r, g, b].map((c) =>
+            c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)
+          );
+          sum += 0.2126 * rs + 0.7152 * gs + 0.0722 * bs;
+          count += 1;
+        }
+        resolve(count > 0 ? sum / count : null);
+      } catch {
+        resolve(null);
+      }
+    };
+    img.onerror = () => resolve(null);
+    img.src = imageUrl;
+  });
+}
+
+/* ── Kid-friendly sans-serif fonts (from layout.tsx) ── */
 const BOOK_FONTS = [
-  "var(--font-book-1)", // Playfair Display
-  "var(--font-book-2)", // Bebas Neue
-  "var(--font-book-3)", // Cormorant Garamond
-  "var(--font-book-4)", // Oswald
-  "var(--font-book-5)", // Libre Baskerville
+  "var(--font-book-1)", // Nunito
+  "var(--font-book-2)", // Quicksand
+  "var(--font-book-3)", // Fredoka
+  "var(--font-book-4)", // Lexend
+  "var(--font-book-5)", // Baloo 2
 ];
 
 /* ── Kids-friendly cover palette ── */
@@ -54,10 +129,11 @@ type SizeDef = {
   subtitleSize: string;
 };
 
+/* Mobile: 3 books per row on ~390px (16px main + 6px shelf each side, 3 books + 2×8px gap → ~102px cover) */
 const SIZES: Record<SizeVariant, SizeDef> = {
-  small:  { w: 105, h: 140, mobileW: 70,  mobileH: 98,  titleSize: "sm:text-xs",   mobileTitleSize: "text-[10px]", subtitleSize: "text-[8px]" },
-  medium: { w: 130, h: 175, mobileW: 80,  mobileH: 112, titleSize: "sm:text-sm",   mobileTitleSize: "text-[11px]", subtitleSize: "text-[9px]" },
-  large:  { w: 148, h: 200, mobileW: 88,  mobileH: 125, titleSize: "sm:text-base", mobileTitleSize: "text-xs",     subtitleSize: "text-[9px]" },
+  small:  { w: 105, h: 140, mobileW: 96,  mobileH: 128, titleSize: "sm:text-xs",   mobileTitleSize: "text-[10px]", subtitleSize: "text-[8px]" },
+  medium: { w: 130, h: 175, mobileW: 99,  mobileH: 133, titleSize: "sm:text-sm",   mobileTitleSize: "text-[11px]", subtitleSize: "text-[9px]" },
+  large:  { w: 148, h: 200, mobileW: 102, mobileH: 137, titleSize: "sm:text-base", mobileTitleSize: "text-xs",     subtitleSize: "text-[9px]" },
 };
 
 /* ── Props ── */
@@ -92,6 +168,35 @@ export default function BookCover({
   const title = story.title ?? `Story ${story.id.slice(0, 8)}`;
   const displayTitle = title.length > 30 ? `${title.slice(0, 28)}...` : title;
   const toneDisplay = formatTonesForDisplay(story.tone);
+
+  /* Placement: top or bottom only (0 = top, 1 = bottom) */
+  const placement = hash % 2;
+  /* Variant: image on top half, title below on solid color (same palette as no-image covers) */
+  const imageTopTitleBelow = hasImage && ((hash >> 1) % 2 === 0);
+  /* When image has AA contrast with text, no overlay/strip needed */
+  const [passesAA, setPassesAA] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (!hasImage || !coverImageUrl || imageTopTitleBelow) {
+      setPassesAA(null);
+      return;
+    }
+    let cancelled = false;
+    sampleImageLuminance(coverImageUrl, placement).then((lum) => {
+      if (cancelled) return;
+      if (lum == null) {
+        setPassesAA(false);
+        return;
+      }
+      const textLum = hexToLuminance(IMAGE_TEXT_COLOR);
+      const ratio = contrastRatio(lum, textLum);
+      setPassesAA(ratio >= AA_CONTRAST);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [hasImage, coverImageUrl, placement, imageTopTitleBelow]);
+
+  const needsOverlay = hasImage && !imageTopTitleBelow && passesAA !== true;
 
   return (
     <button
@@ -134,13 +239,31 @@ export default function BookCover({
           `,
         }}
       >
-        {/* Cover image – shown prominently, image IS the cover */}
+        {/* Cover image: full-bleed or top-half only (title below variant) */}
         {hasImage && (
           <img
             src={coverImageUrl}
             alt=""
-            className="absolute inset-0 w-full h-full object-cover"
+            className={cn(
+              "absolute w-full object-cover left-0 right-0",
+              imageTopTitleBelow ? "top-0 h-[55%]" : "inset-0 h-full"
+            )}
           />
+        )}
+        {/* Bottom color band for "image on top, title below" variant */}
+        {imageTopTitleBelow && (
+          <>
+            <div
+              className="absolute inset-x-0 h-[3px]"
+              style={{ top: "55%", backgroundColor: palette.accent }}
+              aria-hidden
+            />
+            <div
+              className="absolute inset-x-0 bottom-0 rounded-br-md"
+              style={{ top: "calc(55% + 3px)", backgroundColor: palette.bg }}
+              aria-hidden
+            />
+          </>
         )}
 
         {/* ── Inner decorative frame (inset border) ── */}
@@ -148,7 +271,7 @@ export default function BookCover({
           className="absolute pointer-events-none rounded-r-md"
           style={{
             inset: hasImage ? 4 : 6,
-            border: hasImage
+            border: hasImage && !imageTopTitleBelow
               ? "1.5px solid rgba(255,255,255,0.35)"
               : `2px solid ${palette.accent}40`,
             borderRadius: 4,
@@ -156,13 +279,15 @@ export default function BookCover({
           aria-hidden
         />
 
-        {/* ── Bottom gradient for title readability (image covers only) ── */}
-        {hasImage && (
+        {/* ── Gradient for title readability only when contrast is below AA; top or bottom only ── */}
+        {needsOverlay && (
           <div
-            className="absolute inset-x-0 bottom-0"
+            className="absolute inset-x-0 w-full"
             style={{
-              height: "65%",
-              background: "linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.5) 40%, transparent 100%)",
+              height: "50%",
+              ...(placement === 0
+                ? { top: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.5) 60%, transparent 100%)" }
+                : { bottom: 0, background: "linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.5) 40%, transparent 100%)" }),
             }}
             aria-hidden
           />
@@ -199,10 +324,49 @@ export default function BookCover({
       />
 
       {/* ── Title & subtitle content ── */}
-      {hasImage ? (
-        /* Image cover: title anchored at bottom over gradient */
+      {imageTopTitleBelow ? (
+        /* Variant: image on top, title below on solid color band (same palette as no-image) */
         <div
-          className="relative flex h-full w-full flex-col justify-end text-center"
+          className="relative flex h-full w-full flex-col items-center justify-end text-center"
+          style={{
+            color: palette.text,
+            paddingLeft: SPINE_W + 10,
+            paddingRight: 10,
+            paddingTop: 8,
+            paddingBottom: 10,
+          }}
+        >
+          <div className="flex flex-col items-center gap-0.5 w-full">
+            {toneDisplay ? (
+              <span
+                className={cn(
+                  "uppercase tracking-[0.12em] font-sans opacity-70",
+                  size.subtitleSize
+                )}
+              >
+                {toneDisplay}
+              </span>
+            ) : null}
+            <span
+              className={cn(
+                "font-bold line-clamp-2 leading-[1]",
+                size.mobileTitleSize,
+                size.titleSize
+              )}
+              style={{ fontFamily, color: palette.text }}
+            >
+              {displayTitle}
+            </span>
+          </div>
+        </div>
+      ) : hasImage ? (
+        /* Image full-bleed: theme above title; placement top or bottom only */
+        <div
+          className={cn(
+            "relative flex h-full w-full flex-col text-center",
+            placement === 0 && "justify-start",
+            placement === 1 && "justify-end"
+          )}
           style={{
             paddingLeft: SPINE_W + 8,
             paddingRight: 6,
@@ -210,37 +374,45 @@ export default function BookCover({
             paddingTop: 8,
           }}
         >
-          <span
-            className={cn(
-              "font-bold leading-tight line-clamp-3",
-              size.mobileTitleSize,
-              size.titleSize
-            )}
-            style={{
-              fontFamily,
-              color: "#F8F0E3",
-              textShadow: "0 1px 4px rgba(0,0,0,0.7), 0 0 8px rgba(0,0,0,0.4)",
-            }}
-          >
-            {displayTitle}
-          </span>
-          <span
-            className={cn(
-              "uppercase tracking-[0.15em] font-sans mt-0.5 opacity-80",
-              size.subtitleSize
-            )}
-            style={{
-              color: "#F8F0E3",
-              textShadow: "0 1px 3px rgba(0,0,0,0.6)",
-            }}
-          >
-            {toneDisplay}
-          </span>
+          <div className="space-y-0.5">
+            {toneDisplay ? (
+              <span
+                className={cn(
+                  "block uppercase tracking-[0.15em] font-sans opacity-80",
+                  size.subtitleSize
+                )}
+                style={{
+                  color: "#F8F0E3",
+                  textShadow: "0 1px 3px rgba(0,0,0,0.6)",
+                }}
+              >
+                {toneDisplay}
+              </span>
+            ) : null}
+            <span
+              className={cn(
+                "block font-bold line-clamp-3 leading-[1]",
+                size.mobileTitleSize,
+                size.titleSize
+              )}
+              style={{
+                fontFamily,
+                color: "#F8F0E3",
+                textShadow: "0 1px 4px rgba(0,0,0,0.7), 0 0 8px rgba(0,0,0,0.4)",
+              }}
+            >
+              {displayTitle}
+            </span>
+          </div>
         </div>
       ) : (
-        /* Color-only cover: centered layout with decorative elements */
+        /* Color-only cover: theme above title; placement top or bottom only */
         <div
-          className="relative flex h-full w-full flex-col items-center justify-center gap-1 text-center"
+          className={cn(
+            "relative flex h-full w-full flex-col items-center gap-1 text-center",
+            placement === 0 && "justify-start",
+            placement === 1 && "justify-end"
+          )}
           style={{
             color: palette.text,
             paddingLeft: SPINE_W + 10,
@@ -249,7 +421,6 @@ export default function BookCover({
             paddingBottom: 12,
           }}
         >
-          {/* Small decorative star above title */}
           <svg
             width="14" height="14" viewBox="0 0 14 14" fill="currentColor"
             className="opacity-40 mb-1 flex-shrink-0"
@@ -258,35 +429,34 @@ export default function BookCover({
             <path d="M7 0l1.8 5.2H14l-4.2 3L11.5 14 7 10.7 2.5 14l1.7-5.8L0 5.2h5.2z" />
           </svg>
 
+          {toneDisplay ? (
+            <span
+              className={cn(
+                "uppercase tracking-[0.12em] font-sans italic opacity-70",
+                size.subtitleSize
+              )}
+            >
+              {toneDisplay}
+            </span>
+          ) : null}
+
           <span
             className={cn(
-              "font-bold leading-tight line-clamp-3",
+              "font-bold line-clamp-3 leading-[1]",
               size.mobileTitleSize,
               size.titleSize
             )}
-            style={{ fontFamily }}
+            style={{ fontFamily, color: palette.text }}
           >
             {displayTitle}
           </span>
 
-          {/* Decorative divider */}
           <div className="flex items-center gap-1 opacity-40 my-0.5 flex-shrink-0" aria-hidden>
             <span className="inline-block w-2 h-px rounded-full" style={{ backgroundColor: palette.accent }} />
             <svg width="6" height="6" viewBox="0 0 6 6" fill="currentColor">
               <circle cx="3" cy="3" r="2" />
             </svg>
             <span className="inline-block w-2 h-px rounded-full" style={{ backgroundColor: palette.accent }} />
-          </div>
-
-          <div className="mt-auto flex flex-col items-center gap-0.5">
-            <span
-              className={cn(
-                "uppercase tracking-[0.12em] font-sans italic opacity-50",
-                size.subtitleSize
-              )}
-            >
-              {toneDisplay}
-            </span>
           </div>
         </div>
       )}

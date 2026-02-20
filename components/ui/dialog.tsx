@@ -43,9 +43,12 @@ const DialogContent = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
     /** When true, only fades in from center (no slide/zoom from corner) */
     animateFromCenter?: boolean;
+    /** When true, dialog fills viewport on all screen sizes (for iframe modals) */
+    fullscreen?: boolean;
   }
->(({ className, children, animateFromCenter, ...props }, ref) => {
+>(({ className, children, animateFromCenter, fullscreen, ...props }, ref) => {
   const isMobile = useIsMobile();
+  const useFullscreenLayout = fullscreen || isMobile;
 
   return (
     <DialogPortal>
@@ -56,36 +59,41 @@ const DialogContent = React.forwardRef<
           "fixed z-[101] border bg-background shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
           !animateFromCenter &&
             "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]",
-          isMobile
+          useFullscreenLayout
             ? "inset-0 h-full w-full max-h-none rounded-none flex flex-col"
             : "left-[50%] top-[50%] w-full max-w-lg max-h-[90vh] translate-x-[-50%] translate-y-[-50%] rounded-lg grid gap-4 p-6",
           className
         )}
         {...props}
       >
-        {isMobile ? (
+        {useFullscreenLayout ? (
           <>
             <div
-              className="flex-none flex justify-end items-center min-h-14 pl-4"
+              className="flex-none flex justify-end items-center min-h-14 pl-4 shrink-0"
               style={{
                 paddingTop: "max(env(safe-area-inset-top), 1rem)",
                 paddingRight: "max(env(safe-area-inset-right), 1rem)",
               }}
             >
-              <DialogPrimitive.Close className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none p-2 -m-2 min-w-[44px] min-h-[44px] flex items-center justify-center">
-                <XIcon className="h-5 w-5" />
+              <DialogPrimitive.Close className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none p-2 -m-2 min-w-[48px] min-h-[48px] w-12 h-12 flex items-center justify-center">
+                <XIcon className="h-6 w-6" />
                 <span className="sr-only">Close</span>
               </DialogPrimitive.Close>
             </div>
-            <div className="dialog-body flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain p-6 pt-4">
+            <div
+              className={cn(
+                "dialog-body flex-1 min-h-0 overflow-hidden flex flex-col",
+                !fullscreen && "overflow-y-auto overflow-x-hidden overscroll-contain p-6 pt-4"
+              )}
+            >
               {children}
             </div>
           </>
         ) : (
           <>
             {children}
-            <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none">
-              <XIcon className="h-4 w-4" />
+            <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none w-12 h-12 flex items-center justify-center">
+              <XIcon className="h-6 w-6" />
               <span className="sr-only">Close</span>
             </DialogPrimitive.Close>
           </>

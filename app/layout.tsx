@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import {
   Geist,
   Geist_Mono,
-  Playfair_Display,
-  Bebas_Neue,
-  Cormorant_Garamond,
-  Oswald,
-  Libre_Baskerville,
+  Nunito,
+  Quicksand,
+  Fredoka,
+  Lexend,
+  Baloo_2,
 } from "next/font/google";
 import { LanguageProvider } from "@/lib/LanguageContext";
 import { CoinProvider } from "@/lib/CoinContext";
@@ -23,34 +23,35 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const playfairDisplay = Playfair_Display({
+/* Kid-friendly sans-serif book cover fonts (no serifs) */
+const nunito = Nunito({
   variable: "--font-book-1",
   subsets: ["latin"],
-  weight: ["400", "700", "800"],
+  weight: ["400", "600", "700"],
 });
 
-const bebasNeue = Bebas_Neue({
+const quicksand = Quicksand({
   variable: "--font-book-2",
-  weight: "400",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
 });
 
-const cormorantGaramond = Cormorant_Garamond({
+const fredoka = Fredoka({
   variable: "--font-book-3",
-  weight: ["400", "600"],
   subsets: ["latin"],
+  weight: ["400", "500", "600"],
 });
 
-const oswald = Oswald({
+const lexend = Lexend({
   variable: "--font-book-4",
   subsets: ["latin"],
-  weight: ["400", "700"],
+  weight: ["400", "500", "600", "700"],
 });
 
-const libreBaskerville = Libre_Baskerville({
+const baloo2 = Baloo_2({
   variable: "--font-book-5",
-  weight: ["400", "700"],
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -66,7 +67,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${playfairDisplay.variable} ${bebasNeue.variable} ${cormorantGaramond.variable} ${oswald.variable} ${libreBaskerville.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${nunito.variable} ${quicksand.variable} ${fredoka.variable} ${lexend.variable} ${baloo2.variable} antialiased`}
       >
         <ThemeProvider>
           <LanguageProvider>

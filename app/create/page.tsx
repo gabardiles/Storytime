@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { buildStorySpec, buildOpenAIPrompt } from "@/lib/storySpec";
 import { Button } from "@/components/ui/button";
@@ -40,6 +40,8 @@ const TAGS = getTagsForUI();
 
 export default function CreatePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isModal = searchParams.get("modal") === "1";
   const { locale, t } = useLanguage();
 
   const LENGTH_OPTIONS: { key: typeof LENGTH_KEYS[number]; label: string; minutes: number }[] = [
@@ -187,7 +189,11 @@ export default function CreatePage() {
         throw new Error(json?.error || t("create.failedGenerate"));
       }
       await refreshBalance();
-      router.push(`/story/${json.storyId}`);
+      if (isModal && typeof window !== "undefined" && window.self !== window.top) {
+        window.parent.postMessage({ type: "story-created", storyId: json.storyId }, "*");
+      } else {
+        router.push(`/story/${json.storyId}`);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : t("create.failedGenerate"));
     } finally {
@@ -210,12 +216,22 @@ export default function CreatePage() {
         </div>
       )}
       <nav className="flex items-center gap-4 mb-8">
-        <Link
-          href="/library"
-          className="text-muted-foreground hover:text-foreground transition-colors"
-        >
-          {t("create.backLibrary")}
-        </Link>
+        {isModal && typeof window !== "undefined" && window.self !== window.top ? (
+          <button
+            type="button"
+            onClick={() => window.parent.postMessage({ type: "create-modal-close" }, "*")}
+            className="text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {t("create.backLibrary")}
+          </button>
+        ) : (
+          <Link
+            href="/library"
+            className="text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {t("create.backLibrary")}
+          </Link>
+        )}
         <div className="ml-auto flex items-center gap-3">
           <CoinBalance />
           <Settings />

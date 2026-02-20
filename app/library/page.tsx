@@ -27,7 +27,7 @@ export default async function LibraryPage() {
     .limit(50);
 
   return (
-    <main className="min-h-screen p-4 md:p-8 max-w-3xl mx-auto flex flex-col">
+    <main className="min-h-screen px-4 py-4 md:p-8 max-w-3xl mx-auto flex flex-col">
       <LibraryHeader />
       <StoryList stories={stories ?? []} />
       <LibraryFooter email={user.email} />
