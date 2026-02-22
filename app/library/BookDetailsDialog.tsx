@@ -91,7 +91,7 @@ function BookContent({
         <span>·</span>
         <span>{story.length_key}</span>
         <span>·</span>
-        <span>{new Date(story.created_at).toLocaleDateString(locale === "sv" ? "sv-SE" : "en-US")}</span>
+        <span>{new Date(story.created_at).toLocaleDateString(locale === "es" ? "es-ES" : locale === "sv" ? "sv-SE" : "en-US")}</span>
       </div>
 
       <div className="flex items-center justify-between gap-2 mt-6">

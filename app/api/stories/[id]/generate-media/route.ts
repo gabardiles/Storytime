@@ -56,7 +56,7 @@ export async function POST(
     const voiceId = (ctx.voiceId as string) ?? "lily";
     const rawTier = (ctx.voiceTier as string) ?? "standard";
     const voiceTier: VoiceTier =
-      rawTier === "premium" || rawTier === "premium-plus" ? rawTier : "standard";
+      rawTier === "premium" ? "premium" : "standard";
     const language = (ctx.language as string) ?? "en";
     const includeImages = (ctx.includeImages as boolean) !== false;
     const includeVoice = (ctx.includeVoice as boolean) !== false;
@@ -89,6 +89,7 @@ export async function POST(
     );
 
     // Run voice (Google TTS) and images (OpenAI) in parallel—different services
+    let firstVoiceError: string | undefined;
     const voiceTask = includeVoice
       ? (async () => {
           const results = await Promise.all(
@@ -103,6 +104,7 @@ export async function POST(
                 languageCode: langOption.languageCode,
               }).catch((err) => {
                 const msg = err instanceof Error ? err.message : String(err);
+                if (!firstVoiceError) firstVoiceError = msg;
                 console.error(`TTS failed for paragraph ${idx + 1}:`, msg);
                 return null;
               })
@@ -115,9 +117,13 @@ export async function POST(
               await updateParagraph(chapterId, idx + 1, { audioUrl });
             }
           }
-          return { voiceSuccessCount: successCount, voiceTotal: results.length };
+          return {
+            voiceSuccessCount: successCount,
+            voiceTotal: results.length,
+            voiceErrorDetail: firstVoiceError,
+          };
         })()
-      : Promise.resolve({ voiceSuccessCount: 0, voiceTotal: 0 });
+      : Promise.resolve({ voiceSuccessCount: 0, voiceTotal: 0, voiceErrorDetail: undefined as string | undefined });
 
     const imageTask =
       includeImages && imageIndices.length > 0
@@ -156,6 +162,7 @@ export async function POST(
     const { visualConsistencyRef, coverImageUrl } = imageResult ?? {};
     const voiceSuccessCount = voiceResult?.voiceSuccessCount ?? 0;
     const voiceTotal = voiceResult?.voiceTotal ?? 0;
+    const voiceErrorDetail = voiceResult?.voiceErrorDetail;
 
     await markChapterDone(chapterId);
 
@@ -171,7 +178,11 @@ export async function POST(
       summary,
       openaiResponse: paragraphs,
       ...(includeVoice && voiceTotal > 0 && voiceSuccessCount === 0
-        ? { voiceError: "Voice generation failed. Check GOOGLE_APPLICATION_CREDENTIALS_JSON and Vercel logs." }
+        ? {
+            voiceError:
+              voiceErrorDetail ??
+              "Voice generation failed. Check GOOGLE_APPLICATION_CREDENTIALS_JSON and Vercel logs.",
+          }
         : {}),
     };
     await updateStory(storyId, {

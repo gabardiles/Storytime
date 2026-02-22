@@ -16,6 +16,13 @@ export const LANGUAGE_OPTIONS = [
     languageCode: "sv",
     flag: "🇸🇪",
   },
+  {
+    id: "es",
+    name: "Spanish",
+    promptName: "Spanish",
+    languageCode: "es",
+    flag: "🇪🇸",
+  },
 ] as const;
 
 export type LanguageId = (typeof LANGUAGE_OPTIONS)[number]["id"];

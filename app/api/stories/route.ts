@@ -36,7 +36,8 @@ export async function POST(req: Request) {
     const tags = Array.isArray(body.tags) ? body.tags : [];
     const storyRules = body.storyRules ?? "";
     const voiceId = body.voiceId ?? "lily";
-    const voiceTier = (body.voiceTier ?? "standard") as VoiceTier;
+    const voiceTier: VoiceTier =
+      body.voiceTier === "premium" ? "premium" : "standard";
     const language = body.language ?? "en";
     const includeImages = body.includeImages !== false;
     const includeVoice = body.includeVoice !== false;

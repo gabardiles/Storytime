@@ -60,7 +60,7 @@ export async function POST(
     const voiceId = (ctx.voiceId as string) ?? "lily";
     const rawTier = (ctx.voiceTier as string) ?? "standard";
     const voiceTier: VoiceTier =
-      rawTier === "premium" || rawTier === "premium-plus" ? rawTier : "standard";
+      rawTier === "premium" ? "premium" : "standard";
     const language = (ctx.language as string) ?? "en";
     const includeVoice = (ctx.includeVoice as boolean) !== false;
     const factsOnly = (ctx.factsOnly as boolean) === true;

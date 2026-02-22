@@ -25,13 +25,14 @@ import type { StoryDefaults } from "@/lib/db";
 const UI_LANGUAGES = [
   { id: "en" as const, flag: "🇺🇸", label: "English" },
   { id: "sv" as const, flag: "🇸🇪", label: "Svenska" },
+  { id: "es" as const, flag: "🇪🇸", label: "Español" },
 ];
 
 const LENGTH_KEYS = ["micro", "short", "medium", "long"] as const;
 type LengthKey = (typeof LENGTH_KEYS)[number];
 
 export function Settings({ className }: { className?: string }) {
-  const { locale, setLocale, t } = useLanguage();
+  const { locale, setLocale, refetchLocale, t } = useLanguage();
   const { theme, setTheme } = useTheme();
   const [open, setOpen] = useState(false);
   const [storyDefaults, setStoryDefaults] = useState<StoryDefaults>({});
@@ -54,8 +55,11 @@ export function Settings({ className }: { className?: string }) {
   }, []);
 
   useEffect(() => {
-    if (open) loadPrefs();
-  }, [open, loadPrefs]);
+    if (open) {
+      refetchLocale();
+      loadPrefs();
+    }
+  }, [open, loadPrefs, refetchLocale]);
 
   async function saveStoryDefaults() {
     setSavingStoryDefaults(true);
@@ -156,6 +160,36 @@ export function Settings({ className }: { className?: string }) {
                 </p>
                 <div className="grid gap-3">
                   <div className="space-y-1.5">
+                    <Label className="text-sm">{t("create.language")}</Label>
+                    <div className="flex gap-1.5">
+                      {UI_LANGUAGES.map((lang) => {
+                        const storyLang = storyDefaults.language ?? locale;
+                        const selected = storyLang === lang.id;
+                        return (
+                          <button
+                            key={lang.id}
+                            type="button"
+                            onClick={() =>
+                              setStoryDefaults((prev) => ({
+                                ...prev,
+                                language: lang.id,
+                              }))
+                            }
+                            className={`flex items-center justify-center w-10 h-10 rounded-lg border text-xl transition-colors ${
+                              selected
+                                ? "border-primary bg-primary/10 ring-2 ring-primary"
+                                : "border-border hover:bg-accent/50"
+                            }`}
+                            title={lang.label}
+                            aria-label={lang.label}
+                          >
+                            {lang.flag}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
                     <Label className="text-sm">{t("create.length")}</Label>
                     <Select
                       value={lengthKey}
@@ -201,9 +235,6 @@ export function Settings({ className }: { className?: string }) {
                         </SelectItem>
                         <SelectItem value="premium">
                           {t("create.voiceTier.premium")}
-                        </SelectItem>
-                        <SelectItem value="premium-plus">
-                          {t("create.voiceTier.premiumPlus")}
                         </SelectItem>
                       </SelectContent>
                     </Select>
@@ -279,9 +310,7 @@ export function Settings({ className }: { className?: string }) {
                   {savingStoryDefaults ? "…" : t("settings.saveDefaults")}
                 </Button>
                 <p className="text-xs text-muted-foreground">
-                  {locale === "sv"
-                    ? "Sparade standarder används när du skapar en ny saga."
-                    : "Saved defaults are used when you create a new story."}
+                  {t("settings.savedDefaultsNote")}
                 </p>
               </div>
             )}

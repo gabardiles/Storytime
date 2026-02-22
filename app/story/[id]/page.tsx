@@ -77,8 +77,13 @@ export default function StoryPage({
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [storyId, setStoryId] = useState<string>("");
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+  const [isInIframe, setIsInIframe] = useState(false);
   const generateMediaTriggered = useRef(false);
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    setIsInIframe(typeof window !== "undefined" && window.self !== window.top);
+  }, []);
 
   useEffect(() => {
     params.then((p) => setStoryId(p.id));
@@ -122,7 +127,7 @@ export default function StoryPage({
 
   const ctx = story?.context_json;
   const includeVoice = ctx?.includeVoice !== false;
-  const voiceTier = (ctx?.voiceTier ?? "standard") as "standard" | "premium" | "premium-plus";
+  const voiceTier = (ctx?.voiceTier === "premium" ? "premium" : "standard") as "standard" | "premium";
   const lengthKey = (story?.length_key ?? "medium") as "micro" | "short" | "medium" | "long";
   const continueCost = calculateChapterCost(false, includeVoice, false, voiceTier, lengthKey);
   const canAffordContinue = balance === null || balance >= continueCost;
@@ -227,7 +232,7 @@ export default function StoryPage({
   return (
     <main className="min-h-screen p-6 md:p-8 max-w-2xl mx-auto">
       <nav className="flex items-center gap-4 mb-8">
-        {isModal && typeof window !== "undefined" && window.self !== window.top ? (
+        {isModal && isInIframe ? (
           <button
             type="button"
             onClick={() => window.parent.postMessage({ type: "story-modal-close" }, "*")}
@@ -253,8 +258,9 @@ export default function StoryPage({
       <p className="text-muted-foreground text-sm mb-8">
         {t("story.toneLabel")} {formatTonesForDisplay(story.tone)} · {t("story.lengthLabel")} {story.length_key}
         {(story.context_json as { voiceError?: string })?.voiceError && (
-          <span className="ml-2 inline-block text-amber-600 dark:text-amber-400">
+          <span className="ml-2 inline-block text-amber-600 dark:text-amber-400" title={(story.context_json as { voiceError?: string }).voiceError}>
             {t("story.voiceFailed")}
+            <span className="block text-xs mt-0.5">{(story.context_json as { voiceError?: string }).voiceError}</span>
           </span>
         )}
         {story.status === "generating" && (

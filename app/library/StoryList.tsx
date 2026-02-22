@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import BookShelf from "./BookShelf";
+import { CreateStoryForm } from "@/components/CreateStoryForm";
 
 type Story = {
   id: string;
@@ -22,13 +23,6 @@ export default function StoryList({ stories }: { stories: Story[] }) {
 
   useEffect(() => {
     function onMessage(e: MessageEvent) {
-      if (e.data?.type === "story-created" && e.data?.storyId) {
-        setCreateModalOpen(false);
-        setStoryModalId(e.data.storyId);
-      }
-      if (e.data?.type === "create-modal-close") {
-        setCreateModalOpen(false);
-      }
       if (e.data?.type === "story-modal-close") {
         setStoryModalId(null);
       }
@@ -55,15 +49,20 @@ export default function StoryList({ stories }: { stories: Story[] }) {
       <Dialog open={createModalOpen} onOpenChange={setCreateModalOpen}>
         <DialogContent
           fullscreen
-          className="border-0 p-0 [&_.dialog-body]:p-0"
+          className="border-0 p-0 [&_.dialog-body]:p-0 [&_.dialog-body]:overflow-y-auto [&_.dialog-body]:min-h-0"
           animateFromCenter
         >
           <DialogTitle className="sr-only">Create story</DialogTitle>
-          <iframe
-            src="/create?modal=1"
-            title="Create story"
-            className="h-full w-full min-h-0 border-0 bg-background"
-          />
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <CreateStoryForm
+              isModal
+              onClose={() => setCreateModalOpen(false)}
+              onStoryCreated={(storyId) => {
+                setCreateModalOpen(false);
+                setStoryModalId(storyId);
+              }}
+            />
+          </div>
         </DialogContent>
       </Dialog>
 

@@ -6,11 +6,44 @@ import { getVoiceConfig, type VoiceTier } from "./voices";
 const LANGUAGE_TO_GOOGLE: Record<string, string> = {
   en: "en-US",
   sv: "sv-SE",
+  es: "es-ES",
 };
 
-/** Fallback voices for non-English (no Neural2 for all languages) */
-const LANGUAGE_FALLBACK_VOICES: Record<string, string> = {
-  "en-US": "en-US-Neural2-F",
+/**
+ * For non-English, map narrator choice (voiceOptionId) to a Google Cloud TTS voice.
+ * Spanish (es-ES): Neural2 A/E/H female, F/G male. Swedish (sv-SE): Wavenet A–G.
+ * Unknown IDs fall back to first voice for that language.
+ */
+const NON_ENGLISH_VOICE_MAP: Record<
+  string,
+  Partial<Record<string, string>>
+> = {
+  "es-ES": {
+    lily: "es-ES-Neural2-A",
+    emma: "es-ES-Neural2-E",
+    walter: "es-ES-Neural2-F",
+    zephyr: "es-ES-Neural2-A",
+    achernar: "es-ES-Neural2-E",
+    kore: "es-ES-Neural2-H",
+    charon: "es-ES-Neural2-F",
+    puck: "es-ES-Neural2-G",
+    leda: "es-ES-Neural2-H",
+  },
+  "sv-SE": {
+    lily: "sv-SE-Wavenet-A",
+    emma: "sv-SE-Wavenet-B",
+    walter: "sv-SE-Wavenet-C",
+    zephyr: "sv-SE-Wavenet-A",
+    achernar: "sv-SE-Wavenet-D",
+    kore: "sv-SE-Wavenet-F",
+    charon: "sv-SE-Wavenet-E",
+    puck: "sv-SE-Wavenet-G",
+    leda: "sv-SE-Wavenet-A",
+  },
+};
+
+const DEFAULT_NON_ENGLISH_VOICE: Record<string, string> = {
+  "es-ES": "es-ES-Neural2-A",
   "sv-SE": "sv-SE-Wavenet-A",
 };
 
@@ -61,10 +94,13 @@ export async function synthesizeToBuffer(
 
   const client = getGoogleClient();
 
-  const voiceName =
-    config.engine === "standard" && googleLang !== "en-US"
-      ? LANGUAGE_FALLBACK_VOICES[googleLang] ?? "en-US-Neural2-F"
-      : config.voiceName;
+  // For non-English, use language-specific voices (multiple female/male). No Gemini for these locales.
+  const useStandardForLanguage = googleLang !== "en-US";
+  const voiceName = useStandardForLanguage
+    ? (NON_ENGLISH_VOICE_MAP[googleLang]?.[voiceOptionId] ??
+        DEFAULT_NON_ENGLISH_VOICE[googleLang] ??
+        "en-US-Neural2-F")
+    : config.voiceName;
 
   const voiceParams: {
     languageCode: string;
@@ -74,21 +110,25 @@ export async function synthesizeToBuffer(
     languageCode: googleLang,
     name: voiceName,
   };
-  if (config.model) {
+  // Only use Gemini model for English; for Spanish/Swedish etc. use standard API only.
+  if (config.model && !useStandardForLanguage) {
     voiceParams.modelName = config.model;
   }
 
   const inputParams: { text: string; prompt?: string } = { text };
-  if (config.engine === "gemini") {
+  if (config.engine === "gemini" && !useStandardForLanguage) {
     inputParams.prompt = BEDTIME_PROMPT;
   }
+
+  // Spanish: use a slow rate for clearer, calmer narration.
+  const speakingRate = googleLang === "es-ES" ? 0.7 : 1.1;
 
   const [response] = await client.synthesizeSpeech({
     input: inputParams,
     voice: voiceParams,
     audioConfig: {
       audioEncoding: "MP3",
-      speakingRate: 1.1,
+      speakingRate,
     },
   });
 

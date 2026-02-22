@@ -35,7 +35,7 @@ export function calculateChapterCost(
 ): number {
   if (!includeVoice) return 1;
 
-  const isPremium = voiceTier === "premium" || voiceTier === "premium-plus";
+  const isPremium = voiceTier === "premium";
   const base =
     isFirstChapter && includeImages
       ? FIRST_CHAPTER_BASE[lengthKey]

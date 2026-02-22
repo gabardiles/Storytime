@@ -157,6 +157,7 @@ export type StoryDefaults = {
   voiceId?: string;
   includeVoice?: boolean;
   includeImages?: boolean;
+  language?: string;
 };
 
 export type UserPreferences = {
@@ -183,7 +184,7 @@ export async function getUserPreferences(userId: string): Promise<UserPreference
 export async function upsertUserPreferences(
   userId: string,
   prefs: { ui_language: string; theme?: string | null; story_defaults?: StoryDefaults | null }
-) {
+): Promise<UserPreferences | null> {
   const sb = supabaseServer();
   const row: Record<string, unknown> = {
     user_id: userId,
@@ -192,8 +193,18 @@ export async function upsertUserPreferences(
   };
   if (prefs.theme !== undefined) row.theme = prefs.theme;
   if (prefs.story_defaults !== undefined) row.story_defaults = prefs.story_defaults;
-  const { error } = await sb.from("user_preferences").upsert(row, { onConflict: "user_id" });
+  const { data, error } = await sb
+    .from("user_preferences")
+    .upsert(row, { onConflict: "user_id" })
+    .select("ui_language, theme, story_defaults")
+    .single();
   if (error) throw error;
+  if (!data) return null;
+  return {
+    ui_language: data.ui_language ?? "en",
+    theme: data.theme ?? null,
+    story_defaults: data.story_defaults ?? null,
+  };
 }
 
 export async function getStoryByIdAndUser(storyId: string, userId: string) {

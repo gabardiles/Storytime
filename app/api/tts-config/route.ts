@@ -2,9 +2,9 @@ import { NextResponse } from "next/server";
 import { synthesizeToBuffer } from "@/lib/tts";
 
 /**
- * Debug endpoint to check TTS configuration.
- * GET /api/debug/tts-config - config status only
- * GET /api/debug/tts-config?test=1 - also run a short TTS test and return error if it fails
+ * TTS config check (same as /api/debug/tts-config).
+ * GET /api/tts-config - config status only
+ * GET /api/tts-config?test=1 - run a short TTS test and return error if it fails
  */
 export async function GET(request: Request) {
   const skipTts =

@@ -10,15 +10,23 @@ import {
 } from "react";
 import { type Locale, getTranslations } from "./i18n";
 
+const VALID_LOCALES: Locale[] = ["en", "sv", "es"];
+
+function isValidLocale(value: unknown): value is Locale {
+  return typeof value === "string" && VALID_LOCALES.includes(value as Locale);
+}
+
 type LanguageContextValue = {
   locale: Locale;
   setLocale: (lang: Locale) => void;
+  refetchLocale: () => void;
   t: (key: string) => string;
 };
 
 const LanguageContext = createContext<LanguageContextValue>({
   locale: "en",
   setLocale: () => {},
+  refetchLocale: () => {},
   t: (key) => key,
 });
 
@@ -29,14 +37,20 @@ export function useLanguage() {
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>("en");
 
-  useEffect(() => {
+  const refetchLocale = useCallback(() => {
     fetch("/api/user-preferences")
       .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data?.ui_language === "sv") setLocaleState("sv");
+      .then((data: { ui_language?: string } | null) => {
+        if (data && isValidLocale(data.ui_language)) {
+          setLocaleState(data.ui_language);
+        }
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    refetchLocale();
+  }, [refetchLocale]);
 
   const setLocale = useCallback((lang: Locale) => {
     setLocaleState(lang);
@@ -55,8 +69,8 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const t = useMemo(() => getTranslations(locale), [locale]);
 
   const value = useMemo(
-    () => ({ locale, setLocale, t }),
-    [locale, setLocale, t]
+    () => ({ locale, setLocale, refetchLocale, t }),
+    [locale, setLocale, refetchLocale, t]
   );
 
   return (
@@ -67,6 +81,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 const UI_LANGUAGES: { id: Locale; flag: string; label: string }[] = [
   { id: "en", flag: "🇺🇸", label: "English" },
   { id: "sv", flag: "🇸🇪", label: "Svenska" },
+  { id: "es", flag: "🇪🇸", label: "Español" },
 ];
 
 export function LanguageToggle({ className }: { className?: string }) {

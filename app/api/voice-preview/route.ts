@@ -20,10 +20,8 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const voiceId = searchParams.get("voiceId") ?? "lily";
-    const voiceTier = (searchParams.get("voiceTier") ?? "standard") as
-      | "standard"
-      | "premium"
-      | "premium-plus";
+    const voiceTier =
+      searchParams.get("voiceTier") === "premium" ? "premium" : "standard";
     const language = searchParams.get("language") ?? "en";
 
     const previewText = getPreviewText(voiceId, voiceTier, language);

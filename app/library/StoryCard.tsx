@@ -53,7 +53,7 @@ export default function StoryCard({
               </div>
             )}
             <div className="text-sm text-muted-foreground mt-1">
-              {new Date(story.created_at).toLocaleString(locale === "sv" ? "sv-SE" : "en-US")} · {formatTonesForDisplay(story.tone)} ·{" "}
+              {new Date(story.created_at).toLocaleString(locale === "es" ? "es-ES" : locale === "sv" ? "sv-SE" : "en-US")} · {formatTonesForDisplay(story.tone)} ·{" "}
               {story.length_key}
             </div>
           </Link>
