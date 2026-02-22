@@ -94,7 +94,7 @@ export function Settings({ className }: { className?: string }) {
         <SettingsIcon className="size-5" />
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-md" animateFromCenter>
+        <DialogContent className="max-w-md" animateFromCenter forceCentered>
           <DialogHeader>
             <DialogTitle>{t("settings.title")}</DialogTitle>
           </DialogHeader>
