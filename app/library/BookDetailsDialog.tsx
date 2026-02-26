@@ -271,6 +271,7 @@ export default function BookDetailsDialog({
             return (
               <DialogContent
                 animateFromCenter
+                forceCentered
                 className="p-0 overflow-hidden sm:max-w-md aspect-[3/4] min-h-[320px] border-0 [&_.dialog-body]:p-0 [&>button]:text-white [&>button]:opacity-90 [&>button:hover]:opacity-100 [&>button]:bg-transparent [&>button]:border-0"
                 aria-describedby={undefined}
               >

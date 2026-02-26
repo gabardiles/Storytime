@@ -6,6 +6,11 @@ import { XIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
+/**
+ * Modal pattern: default width max-w-3xl (matches app container). Use animateFromCenter
+ * for all modals. Use forceCentered for dialogs that should never go fullscreen (Settings,
+ * Coin info, Lightbox). Omit forceCentered for Create/Story so they go fullscreen on mobile.
+ */
 const Dialog = DialogPrimitive.Root;
 const DialogTrigger = DialogPrimitive.Trigger;
 const DialogPortal = DialogPrimitive.Portal;
@@ -63,7 +68,7 @@ const DialogContent = React.forwardRef<
             "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]",
           useFullscreenLayout
             ? "inset-0 h-full w-full max-h-none rounded-none flex flex-col"
-            : "left-[50%] top-[50%] w-full max-w-lg max-h-[90vh] translate-x-[-50%] translate-y-[-50%] rounded-lg flex flex-col overflow-y-auto overflow-x-hidden p-6",
+            : "left-[50%] top-[50%] w-full max-w-3xl max-h-[90vh] translate-x-[-50%] translate-y-[-50%] rounded-lg flex flex-col overflow-y-auto overflow-x-hidden p-6",
           className
         )}
         {...props}

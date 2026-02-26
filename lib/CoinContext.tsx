@@ -17,6 +17,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type CoinContextValue = {
   balance: number | null;
@@ -127,14 +128,18 @@ export function CoinBalance({ className }: { className?: string }) {
       <button
         type="button"
         onClick={() => setPopupOpen(true)}
-        className={`flex items-center gap-1.5 rounded-lg bg-muted/80 px-2.5 py-1.5 text-sm font-medium hover:bg-muted transition-colors ${className ?? ""}`}
+        className={`flex items-center gap-1.5 rounded-lg bg-muted/80 px-2.5 py-1.5 text-sm font-medium hover:bg-muted transition-colors min-w-[4.5rem] justify-center ${className ?? ""}`}
         title={t("coins.popup.title")}
       >
         <GoldCoinIcon size={24} />
-        <span>{balance}</span>
+        {balance === null ? (
+          <Skeleton className="h-5 w-6 rounded" />
+        ) : (
+          <span>{balance}</span>
+        )}
       </button>
       <Dialog open={popupOpen} onOpenChange={setPopupOpen}>
-        <DialogContent animateFromCenter className="max-w-md">
+        <DialogContent animateFromCenter forceCentered className="max-w-md">
           <DialogHeader>
             <DialogTitle>{t("coins.popup.title")}</DialogTitle>
             <DialogDescription asChild>

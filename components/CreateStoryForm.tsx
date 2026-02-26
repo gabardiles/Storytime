@@ -20,11 +20,9 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Plus, Minus, Hourglass, Volume2, ImageIcon, WandSparkles, Play, Loader2, FlaskConical, Check } from "lucide-react";
-import {
-  getVoicesForTier,
-  type VoiceTier,
-} from "@/lib/voices";
+import { Plus, Minus, Hourglass, Volume2, ImageIcon, WandSparkles, Play, Loader2, FlaskConical, Check, Star } from "lucide-react";
+import { getTierForVoiceId } from "@/lib/voices";
+import { getVoicesForLanguage, getCanonicalVoiceIdForLanguage } from "@/lib/voiceList";
 import { LANGUAGE_OPTIONS } from "@/lib/languages";
 import { TONE_OPTIONS } from "@/lib/tones";
 import { serializeTones } from "@/lib/tones";
@@ -65,9 +63,14 @@ export function CreateStoryForm({ isModal = false, onClose, onStoryCreated }: Cr
   const [lengthKey, setLengthKey] = useState<"micro" | "short" | "medium" | "long">(
     "medium"
   );
-  const [voiceTier, setVoiceTier] = useState<VoiceTier>("standard");
   const [voiceId, setVoiceId] = useState<string>("walter");
   const [language, setLanguage] = useState<string>(locale);
+  const voiceTier = getTierForVoiceId(voiceId);
+
+  // When story language changes, keep selection valid: if current voice is a duplicate in this language, show the canonical option.
+  useEffect(() => {
+    setVoiceId((prev) => getCanonicalVoiceIdForLanguage(prev, language));
+  }, [language]);
 
   const [userInput, setUserInput] = useState("");
   const [storyRules, setStoryRules] = useState("");
@@ -97,7 +100,7 @@ export function CreateStoryForm({ isModal = false, onClose, onStoryCreated }: Cr
     if (previewLoading || previewPlaying) return;
     setPreviewLoading(true);
     try {
-      const url = `/api/voice-preview?voiceId=${encodeURIComponent(voiceId)}&voiceTier=${encodeURIComponent(voiceTier)}&language=${encodeURIComponent(language)}`;
+      const url = `/api/voice-preview?voiceId=${encodeURIComponent(voiceId)}&language=${encodeURIComponent(language)}`;
       const res = await fetch(url);
       if (!res.ok) {
         if (res.status === 503) {
@@ -240,7 +243,7 @@ export function CreateStoryForm({ isModal = false, onClose, onStoryCreated }: Cr
             className="fixed inset-0 bg-black/60"
             onClick={() => setDebugOpen(false)}
           />
-          <div className="fixed right-0 top-0 bottom-0 w-full max-w-lg bg-card border-l shadow-xl overflow-hidden flex flex-col z-10">
+          <div className="fixed right-0 top-0 bottom-0 w-full max-w-3xl bg-card border-l shadow-xl overflow-hidden flex flex-col z-10">
             <div className="flex items-center justify-between p-4 border-b">
               <h2 className="font-semibold">{t("create.pocDebug")}</h2>
               <Button
@@ -462,42 +465,24 @@ export function CreateStoryForm({ isModal = false, onClose, onStoryCreated }: Cr
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="voiceTier">{t("create.voiceQuality")}</Label>
-                  <Select
-                    value={voiceTier}
-                    onValueChange={(v) => {
-                      const tier = v as VoiceTier;
-                      setVoiceTier(tier);
-                      const voices = getVoicesForTier(tier);
-                      setVoiceId(voices[0].id);
-                    }}
-                  >
-                    <SelectTrigger id="voiceTier" className="w-full">
+              <div className="space-y-2">
+                <Label htmlFor="voice">{t("create.narrator")}</Label>
+                <div className="flex gap-2">
+                  <Select value={getCanonicalVoiceIdForLanguage(voiceId, language)} onValueChange={setVoiceId}>
+                    <SelectTrigger id="voice" className="flex-1">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="standard">{t("create.voiceTier.standard")}</SelectItem>
-                      <SelectItem value="premium">{t("create.voiceTier.premium")}</SelectItem>
+                      {getVoicesForLanguage(language).map((v) => (
+                        <SelectItem key={v.id} value={v.id} description={v.description}>
+                          <span className="flex items-center gap-1.5">
+                            {v.tier === "premium" && <Star className="size-3.5 fill-amber-400 text-amber-500 shrink-0" aria-hidden />}
+                            {v.name}
+                          </span>
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="voice">{t("create.narrator")}</Label>
-                  <div className="flex gap-2">
-                    <Select value={voiceId} onValueChange={setVoiceId}>
-                      <SelectTrigger id="voice" className="flex-1">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {getVoicesForTier(voiceTier).map((v) => (
-                          <SelectItem key={v.id} value={v.id} description={v.description}>
-                            {v.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
                     <Button
                       type="button"
                       variant="outline"
@@ -518,8 +503,6 @@ export function CreateStoryForm({ isModal = false, onClose, onStoryCreated }: Cr
                     <p className="text-xs text-destructive">{previewError}</p>
                   )}
                 </div>
-              </div>
-
               <div className="space-y-2">
                 <Label htmlFor="length">{t("create.length")}</Label>
                 <Select

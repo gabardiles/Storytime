@@ -1,6 +1,6 @@
 import { TextToSpeechClient } from "@google-cloud/text-to-speech";
 import { supabaseServer } from "./supabase-server";
-import { getVoiceConfig, type VoiceTier } from "./voices";
+import { getVoiceConfig, getTierForVoiceId, type VoiceTier } from "./voices";
 
 /** Map app language codes to Google TTS language codes */
 const LANGUAGE_TO_GOOGLE: Record<string, string> = {
@@ -10,9 +10,9 @@ const LANGUAGE_TO_GOOGLE: Record<string, string> = {
 };
 
 /**
- * For non-English, map narrator choice (voiceOptionId) to a Google Cloud TTS voice.
- * Spanish (es-ES): Neural2 A/E/H female, F/G male. Swedish (sv-SE): Wavenet A–G.
- * Unknown IDs fall back to first voice for that language.
+ * For standard-tier narrators in non-English only; each narrator gets a unique voice.
+ * Premium (Gemini) voices use the same voice in all languages. Spanish: Neural2 A/E/H (F), F/G (M).
+ * Swedish: Wavenet A–G. Unknown IDs fall back to DEFAULT_NON_ENGLISH_VOICE.
  */
 const NON_ENGLISH_VOICE_MAP: Record<
   string,
@@ -22,23 +22,19 @@ const NON_ENGLISH_VOICE_MAP: Record<
     lily: "es-ES-Neural2-A",
     emma: "es-ES-Neural2-E",
     walter: "es-ES-Neural2-F",
-    zephyr: "es-ES-Neural2-A",
-    achernar: "es-ES-Neural2-E",
-    kore: "es-ES-Neural2-H",
-    charon: "es-ES-Neural2-F",
-    puck: "es-ES-Neural2-G",
-    leda: "es-ES-Neural2-H",
+    rose: "es-ES-Neural2-H",
+    george: "es-ES-Neural2-F",
+    leo: "es-ES-Neural2-G",
+    theo: "es-ES-Neural2-G",
   },
   "sv-SE": {
     lily: "sv-SE-Wavenet-A",
     emma: "sv-SE-Wavenet-B",
     walter: "sv-SE-Wavenet-C",
-    zephyr: "sv-SE-Wavenet-A",
-    achernar: "sv-SE-Wavenet-D",
-    kore: "sv-SE-Wavenet-F",
-    charon: "sv-SE-Wavenet-E",
-    puck: "sv-SE-Wavenet-G",
-    leda: "sv-SE-Wavenet-A",
+    rose: "sv-SE-Wavenet-D",
+    george: "sv-SE-Wavenet-E",
+    leo: "sv-SE-Wavenet-F",
+    theo: "sv-SE-Wavenet-G",
   },
 };
 
@@ -94,13 +90,17 @@ export async function synthesizeToBuffer(
 
   const client = getGoogleClient();
 
-  // For non-English, use language-specific voices (multiple female/male). No Gemini for these locales.
-  const useStandardForLanguage = googleLang !== "en-US";
-  const voiceName = useStandardForLanguage
-    ? (NON_ENGLISH_VOICE_MAP[googleLang]?.[voiceOptionId] ??
-        DEFAULT_NON_ENGLISH_VOICE[googleLang] ??
-        "en-US-Neural2-F")
-    : config.voiceName;
+  // Premium (Gemini) voices: use the same voice for all languages (en, sv, es) so narrator stays consistent.
+  // Standard tier in non-English: use language-specific Neural2/Wavenet voices from the map.
+  const useGeminiForLanguage =
+    !!config.model && ["en-US", "sv-SE", "es-ES"].includes(googleLang);
+  const voiceName = useGeminiForLanguage
+    ? config.voiceName
+    : googleLang !== "en-US"
+      ? (NON_ENGLISH_VOICE_MAP[googleLang]?.[voiceOptionId] ??
+          DEFAULT_NON_ENGLISH_VOICE[googleLang] ??
+          "en-US-Neural2-F")
+      : config.voiceName;
 
   const voiceParams: {
     languageCode: string;
@@ -110,13 +110,12 @@ export async function synthesizeToBuffer(
     languageCode: googleLang,
     name: voiceName,
   };
-  // Only use Gemini model for English; for Spanish/Swedish etc. use standard API only.
-  if (config.model && !useStandardForLanguage) {
+  if (config.model && useGeminiForLanguage) {
     voiceParams.modelName = config.model;
   }
 
   const inputParams: { text: string; prompt?: string } = { text };
-  if (config.engine === "gemini" && !useStandardForLanguage) {
+  if (config.engine === "gemini" && useGeminiForLanguage) {
     inputParams.prompt = BEDTIME_PROMPT;
   }
 

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTheme } from "next-themes";
-import { Settings as SettingsIcon, Volume2, ImageIcon } from "lucide-react";
+import { Settings as SettingsIcon, Volume2, ImageIcon, Star } from "lucide-react";
 import { useLanguage } from "@/lib/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -19,7 +19,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { getVoicesForTier, type VoiceTier } from "@/lib/voices";
+import { Skeleton } from "@/components/ui/skeleton";
+import { getTierForVoiceId } from "@/lib/voices";
+import { getVoicesForLanguage, getCanonicalVoiceIdForLanguage } from "@/lib/voiceList";
 import type { StoryDefaults } from "@/lib/db";
 
 const UI_LANGUAGES = [
@@ -75,11 +77,10 @@ export function Settings({ className }: { className?: string }) {
   }
 
   const lengthKey = (storyDefaults.lengthKey ?? "medium") as LengthKey;
-  const voiceTier = (storyDefaults.voiceTier ?? "standard") as VoiceTier;
   const voiceId = storyDefaults.voiceId ?? "walter";
+  const voiceTier = getTierForVoiceId(voiceId);
   const includeVoice = storyDefaults.includeVoice ?? true;
   const includeImages = storyDefaults.includeImages ?? true;
-  const voices = getVoicesForTier(voiceTier);
 
   return (
     <>
@@ -94,7 +95,7 @@ export function Settings({ className }: { className?: string }) {
         <SettingsIcon className="size-5" />
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-md" animateFromCenter forceCentered>
+        <DialogContent animateFromCenter forceCentered>
           <DialogHeader>
             <DialogTitle>{t("settings.title")}</DialogTitle>
           </DialogHeader>
@@ -151,169 +152,179 @@ export function Settings({ className }: { className?: string }) {
               </div>
             </div>
 
-            {/* Story defaults (only when logged in) */}
-            {storyDefaultsLoaded && (
-              <div className="space-y-4 border-t pt-4">
-                <Label className="text-base">{t("settings.storyDefaults")}</Label>
-                <p className="text-sm text-muted-foreground">
-                  {t("create.extraOptions")}
-                </p>
-                <div className="grid gap-3">
-                  <div className="space-y-1.5">
-                    <Label className="text-sm">{t("create.language")}</Label>
-                    <div className="flex gap-1.5">
-                      {UI_LANGUAGES.map((lang) => {
-                        const storyLang = storyDefaults.language ?? locale;
-                        const selected = storyLang === lang.id;
-                        return (
-                          <button
-                            key={lang.id}
-                            type="button"
-                            onClick={() =>
-                              setStoryDefaults((prev) => ({
-                                ...prev,
-                                language: lang.id,
-                              }))
-                            }
-                            className={`flex items-center justify-center w-10 h-10 rounded-lg border text-xl transition-colors ${
-                              selected
-                                ? "border-primary bg-primary/10 ring-2 ring-primary"
-                                : "border-border hover:bg-accent/50"
-                            }`}
-                            title={lang.label}
-                            aria-label={lang.label}
-                          >
-                            {lang.flag}
-                          </button>
-                        );
-                      })}
+            {/* Story defaults – always reserve space; show skeleton until loaded */}
+            <div className="space-y-4 border-t pt-4 min-h-[320px]">
+              <Label className="text-base">{t("settings.storyDefaults")}</Label>
+              {storyDefaultsLoaded ? (
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    {t("create.extraOptions")}
+                  </p>
+                  <div className="grid gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-sm">{t("create.language")}</Label>
+                      <div className="flex gap-1.5">
+                        {UI_LANGUAGES.map((lang) => {
+                          const storyLang = storyDefaults.language ?? locale;
+                          const selected = storyLang === lang.id;
+                          return (
+                            <button
+                              key={lang.id}
+                              type="button"
+                              onClick={() =>
+                                setStoryDefaults((prev) => ({
+                                  ...prev,
+                                  language: lang.id,
+                                }))
+                              }
+                              className={`flex items-center justify-center w-10 h-10 rounded-lg border text-xl transition-colors ${
+                                selected
+                                  ? "border-primary bg-primary/10 ring-2 ring-primary"
+                                  : "border-border hover:bg-accent/50"
+                              }`}
+                              title={lang.label}
+                              aria-label={lang.label}
+                            >
+                              {lang.flag}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-sm">{t("create.length")}</Label>
+                      <Select
+                        value={lengthKey}
+                        onValueChange={(v) =>
+                          setStoryDefaults((prev) => ({
+                            ...prev,
+                            lengthKey: v as LengthKey,
+                          }))
+                        }
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {LENGTH_KEYS.map((key) => (
+                            <SelectItem key={key} value={key}>
+                              {t(`create.length.${key}`)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-sm">{t("create.narrator")}</Label>
+                      <Select
+                        value={getCanonicalVoiceIdForLanguage(voiceId, locale)}
+                        onValueChange={(v) =>
+                          setStoryDefaults((prev) => ({
+                            ...prev,
+                            voiceId: v,
+                            voiceTier: getTierForVoiceId(v),
+                          }))
+                        }
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {getVoicesForLanguage(locale).map((v) => (
+                            <SelectItem key={v.id} value={v.id}>
+                              <span className="flex items-center gap-1.5">
+                                {v.tier === "premium" && <Star className="size-3.5 fill-amber-400 text-amber-500 shrink-0" aria-hidden />}
+                                {v.name}
+                              </span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setStoryDefaults((prev) => ({
+                            ...prev,
+                            includeVoice: !prev.includeVoice,
+                          }))
+                        }
+                        className={`flex items-center justify-center w-12 h-12 rounded-lg border transition-colors ${
+                          includeVoice
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border bg-muted/50 hover:bg-muted"
+                        }`}
+                        title={t("create.voiceNarration")}
+                        aria-label={t("create.toggleVoice")}
+                        aria-pressed={includeVoice}
+                      >
+                        <Volume2 className="size-6" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setStoryDefaults((prev) => ({
+                            ...prev,
+                            includeImages: !prev.includeImages,
+                          }))
+                        }
+                        className={`flex items-center justify-center w-12 h-12 rounded-lg border transition-colors ${
+                          includeImages
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border bg-muted/50 hover:bg-muted"
+                        }`}
+                        title={t("create.illustrations")}
+                        aria-label={t("create.toggleIllustrations")}
+                        aria-pressed={includeImages}
+                      >
+                        <ImageIcon className="size-6" />
+                      </button>
                     </div>
                   </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-sm">{t("create.length")}</Label>
-                    <Select
-                      value={lengthKey}
-                      onValueChange={(v) =>
-                        setStoryDefaults((prev) => ({
-                          ...prev,
-                          lengthKey: v as LengthKey,
-                        }))
-                      }
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {LENGTH_KEYS.map((key) => (
-                          <SelectItem key={key} value={key}>
-                            {t(`create.length.${key}`)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={saveStoryDefaults}
+                    disabled={savingStoryDefaults}
+                  >
+                    {savingStoryDefaults ? "…" : t("settings.saveDefaults")}
+                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    {t("settings.savedDefaultsNote")}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <Skeleton className="h-4 w-48" />
+                  <div className="grid gap-3">
+                    <div className="space-y-1.5">
+                      <Skeleton className="h-4 w-16" />
+                      <div className="flex gap-1.5">
+                        <Skeleton className="h-10 w-10 rounded-lg" />
+                        <Skeleton className="h-10 w-10 rounded-lg" />
+                        <Skeleton className="h-10 w-10 rounded-lg" />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Skeleton className="h-4 w-14" />
+                      <Skeleton className="h-10 w-full rounded-lg" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Skeleton className="h-4 w-20" />
+                      <Skeleton className="h-10 w-full rounded-lg" />
+                    </div>
+                    <div className="flex gap-2">
+                      <Skeleton className="h-12 w-12 rounded-lg" />
+                      <Skeleton className="h-12 w-12 rounded-lg" />
+                    </div>
                   </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-sm">{t("create.voiceQuality")}</Label>
-                    <Select
-                      value={voiceTier}
-                      onValueChange={(v) => {
-                        const tier = v as VoiceTier;
-                        const list = getVoicesForTier(tier);
-                        setStoryDefaults((prev) => ({
-                          ...prev,
-                          voiceTier: tier,
-                          voiceId: list[0]?.id ?? "walter",
-                        }));
-                      }}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="standard">
-                          {t("create.voiceTier.standard")}
-                        </SelectItem>
-                        <SelectItem value="premium">
-                          {t("create.voiceTier.premium")}
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-sm">{t("create.narrator")}</Label>
-                    <Select
-                      value={voiceId}
-                      onValueChange={(v) =>
-                        setStoryDefaults((prev) => ({ ...prev, voiceId: v }))
-                      }
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {voices.map((v) => (
-                          <SelectItem key={v.id} value={v.id}>
-                            {v.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setStoryDefaults((prev) => ({
-                          ...prev,
-                          includeVoice: !prev.includeVoice,
-                        }))
-                      }
-                      className={`flex items-center justify-center w-12 h-12 rounded-lg border transition-colors ${
-                        includeVoice
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-border bg-muted/50 hover:bg-muted"
-                      }`}
-                      title={t("create.voiceNarration")}
-                      aria-label={t("create.toggleVoice")}
-                      aria-pressed={includeVoice}
-                    >
-                      <Volume2 className="size-6" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setStoryDefaults((prev) => ({
-                          ...prev,
-                          includeImages: !prev.includeImages,
-                        }))
-                      }
-                      className={`flex items-center justify-center w-12 h-12 rounded-lg border transition-colors ${
-                        includeImages
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-border bg-muted/50 hover:bg-muted"
-                      }`}
-                      title={t("create.illustrations")}
-                      aria-label={t("create.toggleIllustrations")}
-                      aria-pressed={includeImages}
-                    >
-                      <ImageIcon className="size-6" />
-                    </button>
-                  </div>
-                </div>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={saveStoryDefaults}
-                  disabled={savingStoryDefaults}
-                >
-                  {savingStoryDefaults ? "…" : t("settings.saveDefaults")}
-                </Button>
-                <p className="text-xs text-muted-foreground">
-                  {t("settings.savedDefaultsNote")}
-                </p>
-              </div>
-            )}
+                  <Skeleton className="h-9 w-28 rounded-md" />
+                  <Skeleton className="h-3 w-64" />
+                </>
+              )}
+            </div>
           </div>
         </DialogContent>
       </Dialog>

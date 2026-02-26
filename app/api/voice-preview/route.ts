@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createRouteHandlerClient } from "@/lib/supabase-route-handler";
 import { synthesizeToBuffer } from "@/lib/tts";
-import { getPreviewText } from "@/lib/voices";
+import { getPreviewText, getTierForVoiceId } from "@/lib/voices";
 
 export async function GET(req: Request) {
   try {
@@ -20,11 +20,10 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const voiceId = searchParams.get("voiceId") ?? "lily";
-    const voiceTier =
-      searchParams.get("voiceTier") === "premium" ? "premium" : "standard";
+    const voiceTier = getTierForVoiceId(voiceId);
     const language = searchParams.get("language") ?? "en";
 
-    const previewText = getPreviewText(voiceId, voiceTier, language);
+    const previewText = getPreviewText(voiceId, language);
     const buffer = await synthesizeToBuffer(previewText, {
       voiceOptionId: voiceId,
       voiceTier,

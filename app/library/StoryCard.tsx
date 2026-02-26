@@ -99,7 +99,7 @@ export default function StoryCard({
             className="fixed inset-0 bg-black/60"
             onClick={() => setDebugOpen(false)}
           />
-          <div className="fixed right-0 top-0 bottom-0 w-full max-w-lg bg-card border-l shadow-xl overflow-hidden flex flex-col z-10">
+          <div className="fixed right-0 top-0 bottom-0 w-full max-w-3xl bg-card border-l shadow-xl overflow-hidden flex flex-col z-10">
             <div className="flex items-center justify-between p-4 border-b">
               <h2 className="font-semibold">{t("storyCard.debugInfo")}</h2>
               <Button
